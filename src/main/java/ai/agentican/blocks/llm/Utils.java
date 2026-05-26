@@ -22,6 +22,11 @@ public final class Utils {
 
     private Utils() {}
 
+    public static boolean isFound(String str) {
+
+        return !isMissing(str);
+    }
+
     public static boolean isMissing(String str) {
 
         return str == null || str.isBlank();
