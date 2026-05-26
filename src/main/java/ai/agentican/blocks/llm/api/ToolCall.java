@@ -12,10 +12,10 @@ public record ToolCall(
     public ToolCall {
 
         if (Utils.isMissing(id))
-            throw new IllegalArgumentException("Tool call ID is required");
+            throw new IllegalArgumentException("Tool call id required");
 
         if (Utils.isMissing(name))
-            throw new IllegalArgumentException("Tool name is required");
+            throw new IllegalArgumentException("Tool name required");
 
         if (args == null) args = Map.of();
     }

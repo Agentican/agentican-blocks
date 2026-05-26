@@ -11,10 +11,10 @@ public record ModelRequest<T>(
     public ModelRequest {
 
         if (systemPrompt == null || systemPrompt.isBlank())
-            throw new IllegalArgumentException("System prompt is required");
+            throw new IllegalArgumentException("System prompt required");
 
         if (userMessage == null || userMessage.isBlank())
-            throw new IllegalArgumentException("User message is required");
+            throw new IllegalArgumentException("User message required");
 
         if (tools == null)
             tools = List.of();

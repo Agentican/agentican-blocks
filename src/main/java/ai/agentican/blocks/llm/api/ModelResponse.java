@@ -12,7 +12,7 @@ public record ModelResponse<T>(
     public ModelResponse {
 
         if (stopReason == null)
-            throw new IllegalArgumentException("Stop reason is required");
+            throw new IllegalArgumentException("Stop reason required");
 
         if (toolCalls == null)
             toolCalls = List.of();

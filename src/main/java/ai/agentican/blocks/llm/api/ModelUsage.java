@@ -11,6 +11,11 @@ public record ModelUsage(
 
     public static final ModelUsage ZERO = new ModelUsage(0, 0, 0, 0, 0);
 
+    public long total() {
+
+        return inputTokens + cacheReadTokens + cacheWriteTokens + outputTokens;
+    }
+
     public ModelUsage plus(ModelUsage other) {
 
         return new ModelUsage(inputTokens + other.inputTokens,
@@ -21,10 +26,5 @@ public record ModelUsage(
     public static ModelUsage sum(Stream<ModelUsage> usages) {
 
         return usages.reduce(ZERO, ModelUsage::plus);
-    }
-
-    public long totalTokens() {
-
-        return inputTokens + cacheReadTokens + cacheWriteTokens + outputTokens;
     }
 }

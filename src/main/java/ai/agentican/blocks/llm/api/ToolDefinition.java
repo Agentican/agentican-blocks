@@ -14,10 +14,10 @@ public record ToolDefinition(
     public ToolDefinition {
 
         if (Utils.isMissing(name))
-            throw new IllegalArgumentException("Tool name is required");
+            throw new IllegalArgumentException("Tool name required");
 
         if (Utils.isMissing(description))
-            throw new IllegalArgumentException("Tool description is required");
+            throw new IllegalArgumentException("Tool description required");
 
         if (properties == null) properties = Map.of();
         if (required == null) required = List.of();
