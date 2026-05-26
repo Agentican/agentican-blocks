@@ -32,9 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAiCompatibleModel implements ProviderModel {
+public class OpenAiCompatible implements Provider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpenAiCompatibleModel.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OpenAiCompatible.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -49,12 +49,12 @@ public class OpenAiCompatibleModel implements ProviderModel {
 
     private final OpenAIClient client;
 
-    public OpenAiCompatibleModel(String apiKey, String baseUrl, String modelName) {
+    public OpenAiCompatible(String apiKey, String baseUrl, String modelName) {
         this(apiKey, baseUrl, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public OpenAiCompatibleModel(String apiKey, String baseUrl, String modelName,
-                                 long maxTokens, Double temperature) {
+    public OpenAiCompatible(String apiKey, String baseUrl, String modelName,
+                            long maxTokens, Double temperature) {
 
         if (Utils.isMissing(apiKey)) throw new IllegalArgumentException("API key required");
         if (Utils.isMissing(baseUrl)) throw new IllegalArgumentException("Base URL required");
@@ -211,7 +211,7 @@ public class OpenAiCompatibleModel implements ProviderModel {
     private <T> ModelResponse<T> translate(ChatCompletion completion, Class<T> outputType) {
 
         if (completion.choices().isEmpty())
-            return new ModelResponse<>(null, "", List.of(), StopReason.END_TURN, ModelUsage.ZERO);
+            return new SingleResponse<>(null, "", List.of(), StopReason.END_TURN, ModelUsage.ZERO);
 
         var choice = completion.choices().get(0);
         var message = choice.message();
@@ -244,7 +244,7 @@ public class OpenAiCompatibleModel implements ProviderModel {
 
         T parsed = parseTyped(text, outputType);
 
-        return new ModelResponse<>(parsed, text, toolCalls, stopReason,
+        return new SingleResponse<>(parsed, text, toolCalls, stopReason,
                 new ModelUsage(inputTokens, outputTokens, cacheReadTokens, 0L, 0L));
     }
 
@@ -291,6 +291,27 @@ public class OpenAiCompatibleModel implements ProviderModel {
 
             LOG.warn("Failed to parse {} tool-call arguments as JSON: {}", baseUrl, arguments, e);
             return Map.of();
+        }
+    }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder implements ProviderBuilder<Builder> {
+
+        private String apiKey;
+        private String baseUrl;
+        private String modelName;
+        private long maxTokens = DEFAULT_MAX_TOKENS;
+        private Double temperature;
+
+        public Builder apiKey(String apiKey)            { this.apiKey = apiKey; return this; }
+        public Builder baseUrl(String baseUrl)          { this.baseUrl = baseUrl; return this; }
+        @Override public Builder model(String model)    { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+
+        @Override public Provider build() {
+            return new OpenAiCompatible(apiKey, baseUrl, modelName, maxTokens, temperature);
         }
     }
 }

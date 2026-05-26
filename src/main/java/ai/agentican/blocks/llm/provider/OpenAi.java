@@ -34,9 +34,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAiModel implements ProviderModel {
+public class OpenAi implements Provider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpenAiModel.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OpenAi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -59,17 +59,17 @@ public class OpenAiModel implements ProviderModel {
 
     private final OpenAIClient client;
 
-    public OpenAiModel(String apiKey, String modelName) {
+    public OpenAi(String apiKey, String modelName) {
 
         this(apiKey, OPENAI, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public OpenAiModel(String apiKey, String modelName, long maxTokens, Double temperature) {
+    public OpenAi(String apiKey, String modelName, long maxTokens, Double temperature) {
 
         this(apiKey, OPENAI, modelName, maxTokens, temperature);
     }
 
-    public OpenAiModel(String apiKey, String provider, String modelName, long maxTokens, Double temperature) {
+    public OpenAi(String apiKey, String provider, String modelName, long maxTokens, Double temperature) {
 
         if (Utils.isMissing(apiKey)) throw new IllegalArgumentException("API key required");
         if (Utils.isMissing(modelName)) throw new IllegalArgumentException("Model name required");
@@ -277,7 +277,7 @@ public class OpenAiModel implements ProviderModel {
         var responseText = textBuilder.toString();
         T parsed = parseTyped(responseText, outputType);
 
-        return new ModelResponse<>(parsed, responseText, toolCalls, stopReason,
+        return new SingleResponse<>(parsed, responseText, toolCalls, stopReason,
                 new ModelUsage(inputTokens, outputTokens, cacheReadTokens, 0L, webSearchRequests));
     }
 
@@ -347,6 +347,27 @@ public class OpenAiModel implements ProviderModel {
 
         } catch (ReflectiveOperationException t) {
             throw new IllegalStateException("Failed to build raw Tool for type=" + typeName, t);
+        }
+    }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder implements ProviderBuilder<Builder> {
+
+        private String apiKey;
+        private String provider = OPENAI;
+        private String modelName;
+        private long maxTokens = DEFAULT_MAX_TOKENS;
+        private Double temperature;
+
+        public Builder apiKey(String apiKey)            { this.apiKey = apiKey; return this; }
+        public Builder provider(String provider)        { this.provider = provider; return this; }
+        @Override public Builder model(String model)    { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+
+        @Override public Provider build() {
+            return new OpenAi(apiKey, provider, modelName, maxTokens, temperature);
         }
     }
 }

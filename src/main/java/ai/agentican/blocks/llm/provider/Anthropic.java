@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class AnthropicModel implements ProviderModel {
+public class Anthropic implements Provider {
 
     private static final CacheControlEphemeral CACHE_CONTROL = CacheControlEphemeral.builder().build();
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -30,12 +30,12 @@ public class AnthropicModel implements ProviderModel {
 
     private final AnthropicClient client;
 
-    public AnthropicModel(String apiKey, String modelName) {
+    public Anthropic(String apiKey, String modelName) {
 
         this(apiKey, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public AnthropicModel(String apiKey, String modelName, long maxTokens, Double temperature) {
+    public Anthropic(String apiKey, String modelName, long maxTokens, Double temperature) {
 
         if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("API key required");
         if (modelName == null || modelName.isBlank()) throw new IllegalArgumentException("Model name required");
@@ -72,7 +72,7 @@ public class AnthropicModel implements ProviderModel {
 
             tools.forEach(tool -> {
 
-                var schemaBuilder = Tool.InputSchema.builder().type(JsonValue.from("object"));
+                var schemaBuilder = com.anthropic.models.messages.Tool.InputSchema.builder().type(JsonValue.from("object"));
 
                 if (tool.properties() != null && !tool.properties().isEmpty())
                     schemaBuilder.properties(JsonValue.from(tool.properties()));
@@ -80,7 +80,7 @@ public class AnthropicModel implements ProviderModel {
                 if (tool.required() != null && !tool.required().isEmpty())
                     schemaBuilder.required(JsonValue.from(tool.required()));
 
-                messageBuilder.addTool(Tool.builder()
+                messageBuilder.addTool(com.anthropic.models.messages.Tool.builder()
                         .name(tool.name())
                         .description(tool.description())
                         .inputSchema(schemaBuilder.build())
@@ -127,7 +127,7 @@ public class AnthropicModel implements ProviderModel {
 
         T output = parse(responseText, outputType);
 
-        return new ModelResponse<>(output, responseText, toolCalls, stopReason,
+        return new SingleResponse<>(output, responseText, toolCalls, stopReason,
                 new ModelUsage(inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchRequests));
     }
 
@@ -231,5 +231,24 @@ public class AnthropicModel implements ProviderModel {
         var format = JsonOutputFormat.builder().schema(schemaBuilder.build()).build();
 
         return OutputConfig.builder().format(format).build();
+    }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder implements ProviderBuilder<Builder> {
+
+        private String apiKey;
+        private String modelName;
+        private long maxTokens = DEFAULT_MAX_TOKENS;
+        private Double temperature;
+
+        public Builder apiKey(String apiKey)            { this.apiKey = apiKey; return this; }
+        @Override public Builder model(String model)    { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+
+        @Override public Provider build() {
+            return new Anthropic(apiKey, modelName, maxTokens, temperature);
+        }
     }
 }

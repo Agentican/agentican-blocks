@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>agentican-messageBlocks</artifactId>
+    <artifactId>agentican-blocks</artifactId>
     <name>Agentican Blocks</name>
     <description>Small Java library for calling LLM providers (OpenAI, Anthropic, Gemini, Bedrock, OpenAI-compatible).</description>
 
@@ -104,6 +104,11 @@
                 <configuration>
                     <!-- Override parent's @{argLine} placeholder (we don't use jacoco-style late binding). -->
                     <argLine></argLine>
+                    <!-- Parent pom sets java.util.logging.manager to jboss-logmanager for Quarkus modules.
+                         This module is plain Java and doesn't depend on jboss-logmanager; use the JDK default. -->
+                    <systemPropertyVariables>
+                        <java.util.logging.manager>java.util.logging.LogManager</java.util.logging.manager>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>

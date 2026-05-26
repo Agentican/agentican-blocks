@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class GeminiModel implements ProviderModel {
+public class Gemini implements Provider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GeminiModel.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Gemini.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final String modelName;
@@ -39,11 +39,11 @@ public class GeminiModel implements ProviderModel {
 
     private final Client client;
 
-    public GeminiModel(String apiKey, String modelName) {
+    public Gemini(String apiKey, String modelName) {
         this(apiKey, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public GeminiModel(String apiKey, String modelName, long maxTokens, Double temperature) {
+    public Gemini(String apiKey, String modelName, long maxTokens, Double temperature) {
 
         if (Utils.isMissing(apiKey)) throw new IllegalArgumentException("API key required");
         if (Utils.isMissing(modelName)) throw new IllegalArgumentException("Model name required");
@@ -198,7 +198,7 @@ public class GeminiModel implements ProviderModel {
         var responseText = textBuilder.toString();
         T parsed = parseTyped(responseText, outputType);
 
-        return new ModelResponse<>(parsed, responseText, toolCalls, stopReason,
+        return new SingleResponse<>(parsed, responseText, toolCalls, stopReason,
                 new ModelUsage(inputTokens, outputTokens, cacheReadTokens, 0L, webSearchRequests));
     }
 
@@ -233,5 +233,24 @@ public class GeminiModel implements ProviderModel {
                 yield StopReason.END_TURN;
             }
         };
+    }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder implements ProviderBuilder<Builder> {
+
+        private String apiKey;
+        private String modelName;
+        private long maxTokens = DEFAULT_MAX_TOKENS;
+        private Double temperature;
+
+        public Builder apiKey(String apiKey)            { this.apiKey = apiKey; return this; }
+        @Override public Builder model(String model)    { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+
+        @Override public Provider build() {
+            return new Gemini(apiKey, modelName, maxTokens, temperature);
+        }
     }
 }

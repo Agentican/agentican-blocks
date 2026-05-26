@@ -5,7 +5,7 @@ import ai.agentican.blocks.llm.api.ModelRequest;
 import ai.agentican.blocks.llm.api.ModelResponse;
 import ai.agentican.blocks.llm.api.ModelSession;
 import ai.agentican.blocks.llm.api.ToolDefinition;
-import ai.agentican.blocks.llm.provider.ProviderModel;
+import ai.agentican.blocks.llm.api.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,16 +27,16 @@ public final class ModelFactory implements Model {
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(30);
     private static final Duration DEFAULT_BASE_DELAY = Duration.ofSeconds(1);
 
-    private final ProviderModel impl;
+    private final Provider impl;
     private final int maxRetries;
     private final Duration baseDelay;
 
-    public ModelFactory(ProviderModel impl) {
+    public ModelFactory(Provider impl) {
 
         this(impl, DEFAULT_MAX_RETRIES, DEFAULT_BASE_DELAY);
     }
 
-    public ModelFactory(ProviderModel model, int maxRetries, Duration baseDelay) {
+    public ModelFactory(Provider model, int maxRetries, Duration baseDelay) {
 
         if (model == null) throw new IllegalArgumentException("Model required");
 

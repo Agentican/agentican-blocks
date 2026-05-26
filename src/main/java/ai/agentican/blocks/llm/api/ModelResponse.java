@@ -2,22 +2,15 @@ package ai.agentican.blocks.llm.api;
 
 import java.util.List;
 
-public record ModelResponse<T>(
-        T output,
-        String text,
-        List<ToolCall> toolCalls,
-        StopReason stopReason,
-        ModelUsage usage) {
+public sealed interface ModelResponse<T> permits SingleResponse, LoopResponse {
 
-    public ModelResponse {
+    T output();
 
-        if (stopReason == null)
-            throw new IllegalArgumentException("Stop reason required");
+    String text();
 
-        if (toolCalls == null)
-            toolCalls = List.of();
+    List<ToolCall> toolCalls();
 
-        if (usage == null)
-            usage = ModelUsage.ZERO;
-    }
+    StopReason stopReason();
+
+    ModelUsage usage();
 }

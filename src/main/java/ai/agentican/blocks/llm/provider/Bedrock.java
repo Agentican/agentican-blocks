@@ -2,10 +2,7 @@ package ai.agentican.blocks.llm.provider;
 
 import ai.agentican.blocks.llm.*;
 
-import ai.agentican.blocks.llm.api.ModelResponse;
-import ai.agentican.blocks.llm.api.ModelUsage;
-import ai.agentican.blocks.llm.api.ToolCall;
-import ai.agentican.blocks.llm.api.ToolDefinition;
+import ai.agentican.blocks.llm.api.*;
 import ai.agentican.blocks.llm.impl.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -40,9 +37,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BedrockModel implements ProviderModel {
+public class Bedrock implements Provider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BedrockModel.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Bedrock.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final String modelName;
@@ -51,13 +48,13 @@ public class BedrockModel implements ProviderModel {
 
     private final BedrockRuntimeClient client;
 
-    public BedrockModel(String modelName) {
+    public Bedrock(String modelName) {
 
         this(null, null, null, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public BedrockModel(String accessKeyId, String secretAccessKey, String region, String modelName,
-                        long maxTokens, Double temperature) {
+    public Bedrock(String accessKeyId, String secretAccessKey, String region, String modelName,
+                   long maxTokens, Double temperature) {
 
         if (Utils.isMissing(modelName))
             throw new IllegalArgumentException("Model name required");
@@ -234,7 +231,7 @@ public class BedrockModel implements ProviderModel {
         var responseText = textBuilder.toString();
         T parsed = parseTyped(responseText, outputType);
 
-        return new ModelResponse<>(parsed, responseText, toolCalls, stopReason,
+        return new SingleResponse<>(parsed, responseText, toolCalls, stopReason,
                 new ModelUsage(inputTokens, outputTokens, cacheRead, cacheWrite, 0L));
     }
 
@@ -334,5 +331,28 @@ public class BedrockModel implements ProviderModel {
         if (document.isNumber()) return document.asNumber().bigDecimalValue();
 
         return null;
+    }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder implements ProviderBuilder<Builder> {
+
+        private String accessKeyId;
+        private String secretAccessKey;
+        private String region;
+        private String modelName;
+        private long maxTokens = DEFAULT_MAX_TOKENS;
+        private Double temperature;
+
+        public Builder accessKeyId(String s)            { this.accessKeyId = s; return this; }
+        public Builder secretAccessKey(String s)        { this.secretAccessKey = s; return this; }
+        public Builder region(String region)            { this.region = region; return this; }
+        @Override public Builder model(String model)    { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+
+        @Override public Provider build() {
+            return new Bedrock(accessKeyId, secretAccessKey, region, modelName, maxTokens, temperature);
+        }
     }
 }
