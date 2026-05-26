@@ -38,7 +38,7 @@ public final class ModelFactory implements Model {
 
     public ModelFactory(ProviderModel model, int maxRetries, Duration baseDelay) {
 
-        if (model == null) throw new IllegalArgumentException("model is required");
+        if (model == null) throw new IllegalArgumentException("Model required");
 
         this.impl = model;
         this.maxRetries = maxRetries > 0 ? maxRetries : DEFAULT_MAX_RETRIES;
@@ -48,7 +48,7 @@ public final class ModelFactory implements Model {
     @Override
     public <T> ModelResponse<T> send(ModelRequest<T> request) {
 
-        var messages = List.of(ModelMessage.user(new TextBlock(request.userMessage())));
+        var messages = List.of(ModelMessage.user(new TextMessageBlock(request.userMessage())));
 
         return send(request.systemPrompt(), messages, request.tools(), request.outputType());
     }

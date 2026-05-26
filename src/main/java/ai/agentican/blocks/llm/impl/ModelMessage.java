@@ -2,32 +2,33 @@ package ai.agentican.blocks.llm.impl;
 
 import java.util.List;
 
-public record ModelMessage(Role role, List<Block> blocks) {
+public record ModelMessage(MessageRole messageRole, List<MessageBlock> messageBlocks) {
 
     public ModelMessage {
 
-        if (role == null) throw new IllegalArgumentException("Message role is required");
+        if (messageRole == null) throw new IllegalArgumentException("Message role is required");
 
-        if (blocks == null) blocks = List.of();
+        if (messageBlocks == null)
+            messageBlocks = List.of();
     }
 
-    public static ModelMessage user(Block... blocks) {
+    public static ModelMessage user(MessageBlock... messageBlocks) {
 
-        return new ModelMessage(Role.USER, List.of(blocks));
+        return new ModelMessage(MessageRole.USER, List.of(messageBlocks));
     }
 
-    public static ModelMessage assistant(Block... blocks) {
+    public static ModelMessage assistant(MessageBlock... messageBlocks) {
 
-        return new ModelMessage(Role.ASSISTANT, List.of(blocks));
+        return new ModelMessage(MessageRole.ASSISTANT, List.of(messageBlocks));
     }
 
-    public static ModelMessage user(List<Block> blocks) {
+    public static ModelMessage user(List<MessageBlock> messageBlocks) {
 
-        return new ModelMessage(Role.USER, blocks);
+        return new ModelMessage(MessageRole.USER, messageBlocks);
     }
 
-    public static ModelMessage assistant(List<Block> blocks) {
+    public static ModelMessage assistant(List<MessageBlock> messageBlocks) {
 
-        return new ModelMessage(Role.ASSISTANT, blocks);
+        return new ModelMessage(MessageRole.ASSISTANT, messageBlocks);
     }
 }

@@ -42,7 +42,7 @@ class ModelLibraryCompileTest {
             public <T> ModelResponse<T> execute(String sp, List<ModelMessage> messages,
                                                  List<ToolDefinition> t, Class<T> outputType) {
                 var lastUser = messages.get(messages.size() - 1);
-                var text = ((TextBlock) lastUser.blocks().get(0)).text();
+                var text = ((TextMessageBlock) lastUser.messageBlocks().get(0)).text();
                 return (ModelResponse<T>) sendImpl.apply(new ModelRequest<>(sp, text,
                         t == null ? List.of() : t, outputType));
             }
@@ -110,10 +110,10 @@ class ModelLibraryCompileTest {
         var history = session.messages();
 
         assertEquals(2, history.size());
-        assertEquals(Role.USER, history.get(0).role());
-        assertEquals("hello", ((TextBlock) history.get(0).blocks().get(0)).text());
-        assertEquals(Role.ASSISTANT, history.get(1).role());
-        assertEquals("hi there", ((TextBlock) history.get(1).blocks().get(0)).text());
+        assertEquals(MessageRole.USER, history.get(0).messageRole());
+        assertEquals("hello", ((TextMessageBlock) history.get(0).messageBlocks().get(0)).text());
+        assertEquals(MessageRole.ASSISTANT, history.get(1).messageRole());
+        assertEquals("hi there", ((TextMessageBlock) history.get(1).messageBlocks().get(0)).text());
     }
 
     @Test
@@ -132,10 +132,10 @@ class ModelLibraryCompileTest {
         var history = session.messages();
 
         assertEquals(6, history.size(), "3 user + 3 assistant messages");
-        assertEquals("turn one", ((TextBlock) history.get(0).blocks().get(0)).text());
-        assertEquals("reply 1",  ((TextBlock) history.get(1).blocks().get(0)).text());
-        assertEquals("turn three", ((TextBlock) history.get(4).blocks().get(0)).text());
-        assertEquals("reply 3",   ((TextBlock) history.get(5).blocks().get(0)).text());
+        assertEquals("turn one", ((TextMessageBlock) history.get(0).messageBlocks().get(0)).text());
+        assertEquals("reply 1",  ((TextMessageBlock) history.get(1).messageBlocks().get(0)).text());
+        assertEquals("turn three", ((TextMessageBlock) history.get(4).messageBlocks().get(0)).text());
+        assertEquals("reply 3",   ((TextMessageBlock) history.get(5).messageBlocks().get(0)).text());
     }
 
     @Test
@@ -158,8 +158,8 @@ class ModelLibraryCompileTest {
 
         var history = session.messages();
         assertEquals(2, history.size(), "exactly one user + one assistant entry despite retries");
-        assertEquals("hello",     ((TextBlock) history.get(0).blocks().get(0)).text());
-        assertEquals("succeeded", ((TextBlock) history.get(1).blocks().get(0)).text());
+        assertEquals("hello",     ((TextMessageBlock) history.get(0).messageBlocks().get(0)).text());
+        assertEquals("succeeded", ((TextMessageBlock) history.get(1).messageBlocks().get(0)).text());
     }
 
     @Test

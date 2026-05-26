@@ -6,9 +6,7 @@ import ai.agentican.blocks.llm.api.ModelResponse;
 import ai.agentican.blocks.llm.api.ModelUsage;
 import ai.agentican.blocks.llm.api.ToolCall;
 import ai.agentican.blocks.llm.api.ToolDefinition;
-import ai.agentican.blocks.llm.impl.Block;
-import ai.agentican.blocks.llm.impl.ModelMessage;
-import ai.agentican.blocks.llm.impl.Role;
+import ai.agentican.blocks.llm.impl.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.slf4j.Logger;
@@ -166,21 +164,21 @@ public class BedrockModel implements ProviderModel {
 
             var contents = new ArrayList<ContentBlock>();
 
-            for (var block : msg.blocks()) {
+            for (var block : msg.messageBlocks()) {
 
                 switch (block) {
 
-                    case ai.agentican.blocks.llm.impl.TextBlock t ->
+                    case TextMessageBlock t ->
                             contents.add(ContentBlock.fromText(t.text()));
 
-                    case ai.agentican.blocks.llm.impl.ToolUseBlock tu ->
+                    case ToolUseMessageBlock tu ->
                             contents.add(ContentBlock.fromToolUse(ToolUseBlock.builder()
                                     .toolUseId(tu.id())
                                     .name(tu.toolName())
                                     .input(toDocument(tu.args()))
                                     .build()));
 
-                    case ai.agentican.blocks.llm.impl.ToolResultBlock tr ->
+                    case ToolResultMessageBlock tr ->
                             contents.add(ContentBlock.fromToolResult(ToolResultBlock.builder()
                                     .toolUseId(tr.toolUseId())
                                     .content(ToolResultContentBlock.fromText(tr.content()))
@@ -190,7 +188,7 @@ public class BedrockModel implements ProviderModel {
             }
 
             out.add(Message.builder()
-                    .role(msg.role() == Role.USER
+                    .role(msg.messageRole() == MessageRole.USER
                             ? ConversationRole.USER : ConversationRole.ASSISTANT)
                     .content(contents)
                     .build());

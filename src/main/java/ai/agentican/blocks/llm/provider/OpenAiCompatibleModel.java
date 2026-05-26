@@ -142,11 +142,11 @@ public class OpenAiCompatibleModel implements ProviderModel {
 
         for (var msg : modelMessages) {
 
-            if (msg.role() == Role.USER) {
+            if (msg.messageRole() == MessageRole.USER) {
 
-                var toolResultBlocks = msg.blocks().stream()
-                        .filter(b -> b instanceof ToolResultBlock)
-                        .map(b -> (ToolResultBlock) b)
+                var toolResultBlocks = msg.messageBlocks().stream()
+                        .filter(b -> b instanceof ToolResultMessageBlock)
+                        .map(b -> (ToolResultMessageBlock) b)
                         .toList();
 
                 for (var tr : toolResultBlocks)
@@ -155,9 +155,9 @@ public class OpenAiCompatibleModel implements ProviderModel {
                             .content(tr.content())
                             .build()));
 
-                var text = msg.blocks().stream()
-                        .filter(b -> b instanceof TextBlock)
-                        .map(b -> ((TextBlock) b).text())
+                var text = msg.messageBlocks().stream()
+                        .filter(b -> b instanceof TextMessageBlock)
+                        .map(b -> ((TextMessageBlock) b).text())
                         .filter(t -> !t.isBlank())
                         .reduce((a, b) -> a + "\n\n" + b)
                         .orElse(null);
@@ -171,18 +171,18 @@ public class OpenAiCompatibleModel implements ProviderModel {
 
                 var assistantBuilder = ChatCompletionAssistantMessageParam.builder();
 
-                var text = msg.blocks().stream()
-                        .filter(b -> b instanceof TextBlock)
-                        .map(b -> ((TextBlock) b).text())
+                var text = msg.messageBlocks().stream()
+                        .filter(b -> b instanceof TextMessageBlock)
+                        .map(b -> ((TextMessageBlock) b).text())
                         .filter(t -> !t.isBlank())
                         .reduce((a, b) -> a + "\n\n" + b)
                         .orElse(null);
 
                 if (text != null) assistantBuilder.content(text);
 
-                msg.blocks().stream()
-                        .filter(b -> b instanceof ToolUseBlock)
-                        .map(b -> (ToolUseBlock) b)
+                msg.messageBlocks().stream()
+                        .filter(b -> b instanceof ToolUseMessageBlock)
+                        .map(b -> (ToolUseMessageBlock) b)
                         .forEach(tu -> {
                             var argsJson = toJson(tu.args());
                             var fn = ChatCompletionMessageFunctionToolCall.Function.builder()

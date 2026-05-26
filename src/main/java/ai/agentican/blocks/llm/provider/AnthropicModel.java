@@ -4,9 +4,7 @@ import ai.agentican.blocks.llm.*;
 
 import ai.agentican.blocks.llm.api.*;
 import ai.agentican.blocks.llm.api.StopReason;
-import ai.agentican.blocks.llm.impl.Block;
-import ai.agentican.blocks.llm.impl.ModelMessage;
-import ai.agentican.blocks.llm.impl.Role;
+import ai.agentican.blocks.llm.impl.*;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.core.JsonValue;
@@ -157,22 +155,22 @@ public class AnthropicModel implements ProviderModel {
 
         for (var msg : modelMessages) {
 
-            var blocks = new ArrayList<ContentBlockParam>(msg.blocks().size());
+            var blocks = new ArrayList<ContentBlockParam>(msg.messageBlocks().size());
 
-            var isFirstUser = !firstUserSeen && msg.role() == Role.USER;
+            var isFirstUser = !firstUserSeen && msg.messageRole() == MessageRole.USER;
 
-            var lastIdx = msg.blocks().size() - 1;
+            var lastIdx = msg.messageBlocks().size() - 1;
 
-            for (int i = 0; i < msg.blocks().size(); i++) {
+            for (int i = 0; i < msg.messageBlocks().size(); i++) {
 
-                var block = msg.blocks().get(i);
+                var block = msg.messageBlocks().get(i);
                 var applyCache = isFirstUser && i == lastIdx;
 
                 blocks.add(translateBlock(block, applyCache));
             }
 
             out.add(MessageParam.builder()
-                    .role(msg.role() == Role.USER
+                    .role(msg.messageRole() == MessageRole.USER
                             ? MessageParam.Role.USER : MessageParam.Role.ASSISTANT)
                     .contentOfBlockParams(blocks)
                     .build());
@@ -183,18 +181,18 @@ public class AnthropicModel implements ProviderModel {
         return out;
     }
 
-    private static ContentBlockParam translateBlock(Block block, boolean applyCache) {
+    private static ContentBlockParam translateBlock(MessageBlock messageBlock, boolean applyCache) {
 
-        return switch (block) {
+        return switch (messageBlock) {
 
-            case ai.agentican.blocks.llm.impl.TextBlock t -> {
+            case TextMessageBlock t -> {
 
                 var b = TextBlockParam.builder().text(t.text());
                 if (applyCache) b.cacheControl(CACHE_CONTROL);
                 yield ContentBlockParam.ofText(b.build());
             }
 
-            case ai.agentican.blocks.llm.impl.ToolUseBlock tu -> {
+            case ToolUseMessageBlock tu -> {
 
                 var inputJson = JSON.<JsonValue>convertValue(tu.args(), new TypeReference<JsonValue>() {});
                 yield ContentBlockParam.ofToolUse(ToolUseBlockParam.builder()
@@ -204,7 +202,7 @@ public class AnthropicModel implements ProviderModel {
                         .build());
             }
 
-            case ai.agentican.blocks.llm.impl.ToolResultBlock tr -> {
+            case ToolResultMessageBlock tr -> {
 
                 var b = ToolResultBlockParam.builder()
                         .toolUseId(tr.toolUseId())

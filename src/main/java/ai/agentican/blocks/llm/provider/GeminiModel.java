@@ -116,13 +116,13 @@ public class GeminiModel implements ProviderModel {
 
             var parts = new ArrayList<Part>();
 
-            for (var block : msg.blocks()) {
+            for (var block : msg.messageBlocks()) {
 
                 switch (block) {
 
-                    case TextBlock t -> parts.add(Part.fromText(t.text()));
+                    case TextMessageBlock t -> parts.add(Part.fromText(t.text()));
 
-                    case ToolUseBlock tu -> parts.add(Part.builder()
+                    case ToolUseMessageBlock tu -> parts.add(Part.builder()
                             .functionCall(FunctionCall.builder()
                                     .id(tu.id())
                                     .name(tu.toolName())
@@ -130,7 +130,7 @@ public class GeminiModel implements ProviderModel {
                                     .build())
                             .build());
 
-                    case ToolResultBlock tr -> parts.add(Part.builder()
+                    case ToolResultMessageBlock tr -> parts.add(Part.builder()
                             .functionResponse(FunctionResponse.builder()
                                     .id(tr.toolUseId())
                                     .response(Map.of("content", tr.content()))
@@ -140,7 +140,7 @@ public class GeminiModel implements ProviderModel {
             }
 
             out.add(Content.builder()
-                    .role(msg.role() == Role.USER ? "user" : "model")
+                    .role(msg.messageRole() == MessageRole.USER ? "user" : "model")
                     .parts(parts)
                     .build());
         }

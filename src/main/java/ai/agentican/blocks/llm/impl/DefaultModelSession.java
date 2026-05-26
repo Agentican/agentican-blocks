@@ -13,16 +13,16 @@ public final class DefaultModelSession implements ModelSession {
     private final ModelFactory engine;
     private final String systemPrompt;
     private final List<ToolDefinition> tools;
-    private final List<ModelMessage> history = new ArrayList<>();
+    private final List<ModelMessage> history = new ArrayList<>(); // TOOD consider List.copyOf for access
 
     public DefaultModelSession(ModelFactory engine, String systemPrompt, List<ToolDefinition> tools) {
 
-        if (engine == null) throw new IllegalArgumentException("engine is required");
-        if (Utils.isMissing(systemPrompt)) throw new IllegalArgumentException("System prompt is required");
+        if (engine == null) throw new IllegalArgumentException("Model factory required");
+        if (Utils.isMissing(systemPrompt)) throw new IllegalArgumentException("System prompt required");
 
         this.engine = engine;
         this.systemPrompt = systemPrompt;
-        this.tools = tools != null ? List.copyOf(tools) : List.of();
+        this.tools = tools != null ? tools : List.of();
     }
 
     @Override
@@ -35,23 +35,24 @@ public final class DefaultModelSession implements ModelSession {
     public <T> ModelResponse<T> send(String userMessage, Class<T> outputType) {
 
         if (Utils.isMissing(userMessage))
-            throw new IllegalArgumentException("userMessage is required");
+            throw new IllegalArgumentException("User message required");
 
-        history.add(ModelMessage.user(new TextBlock(userMessage)));
+        history.add(ModelMessage.user(new TextMessageBlock(userMessage)));
 
         ModelResponse<T> response;
 
         try {
 
-            response = engine.send(systemPrompt, List.copyOf(history), tools, outputType);
+            response = engine.send(systemPrompt, history, tools, outputType);
         }
         catch (RuntimeException e) {
 
             history.removeLast();
+
             throw e;
         }
 
-        history.add(ModelMessage.assistant(new TextBlock(response.text() != null ? response.text() : "")));
+        history.add(ModelMessage.assistant(new TextMessageBlock(response.text() != null ? response.text() : "")));
 
         return response;
     }
@@ -59,6 +60,6 @@ public final class DefaultModelSession implements ModelSession {
     @Override
     public List<ModelMessage> messages() {
 
-        return List.copyOf(history);
+        return history;
     }
 }
