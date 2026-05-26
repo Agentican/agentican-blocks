@@ -2,6 +2,7 @@ package ai.agentican.blocks.llm;
 
 import ai.agentican.blocks.llm.api.*;
 import ai.agentican.blocks.llm.impl.*;
+import ai.agentican.blocks.llm.provider.ProviderModel;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -24,27 +25,30 @@ class ModelLibraryCompileTest {
     }
 
     /**
-     * Test provider: an {@link AbstractModel} whose {@code executeChat} delegates to the
-     * given function. Lets us drive retry tests with millisecond delays so they stay fast.
+     * Test provider: a {@link ProviderModel} whose {@code execute} delegates to the given
+     * function, wrapped in a {@link ModelFactory}. Lets us drive retry tests with millisecond
+     * delays so they stay fast.
      */
-    private static AbstractModel stubClient(Function<ModelRequest<?>, ModelResponse<?>> sendImpl) {
+    private static ModelFactory stubClient(Function<ModelRequest<?>, ModelResponse<?>> sendImpl) {
         return stubClient(3, Duration.ofMillis(1), sendImpl);
     }
 
-    private static AbstractModel stubClient(int maxRetries, Duration baseDelay,
-                                            Function<ModelRequest<?>, ModelResponse<?>> sendImpl) {
+    private static ModelFactory stubClient(int maxRetries, Duration baseDelay,
+                                           Function<ModelRequest<?>, ModelResponse<?>> sendImpl) {
 
-        return new AbstractModel("test-model", 16384L, null, maxRetries, baseDelay) {
+        ProviderModel provider = new ProviderModel() {
             @Override
             @SuppressWarnings("unchecked")
-            protected <T> ModelResponse<T> executeChat(String sp, List<ModelMessage> messages,
-                                                       List<ToolDefinition> t, Class<T> outputType) {
+            public <T> ModelResponse<T> execute(String sp, List<ModelMessage> messages,
+                                                 List<ToolDefinition> t, Class<T> outputType) {
                 var lastUser = messages.get(messages.size() - 1);
                 var text = ((TextBlock) lastUser.blocks().get(0)).text();
                 return (ModelResponse<T>) sendImpl.apply(new ModelRequest<>(sp, text,
                         t == null ? List.of() : t, outputType));
             }
         };
+
+        return new ModelFactory(provider, maxRetries, baseDelay);
     }
 
     @Test

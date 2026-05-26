@@ -28,11 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class GeminiModel extends AbstractModel {
+public class GeminiModel implements ProviderModel {
 
     private static final Logger LOG = LoggerFactory.getLogger(GeminiModel.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    private final String model;
+    private final long maxTokens;
+    private final Double temperature;
     private final Client client;
 
     public GeminiModel(String apiKey, String model) {
@@ -41,19 +44,18 @@ public class GeminiModel extends AbstractModel {
 
     public GeminiModel(String apiKey, String model, long maxTokens, Double temperature) {
 
-        super(model, maxTokens, temperature);
+        if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("apiKey is required");
+        if (model == null || model.isBlank()) throw new IllegalArgumentException("model is required");
 
-        if (apiKey == null || apiKey.isBlank())
-            throw new IllegalArgumentException("apiKey is required");
-
+        this.model = model;
+        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.temperature = temperature;
         this.client = Client.builder().apiKey(apiKey).build();
     }
 
     @Override
-    protected <T> ModelResponse<T> executeChat(String systemPrompt,
-                                               List<ModelMessage> messages,
-                                               List<ToolDefinition> tools,
-                                               Class<T> outputType) {
+    public <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
+                                        List<ToolDefinition> tools, Class<T> outputType) {
 
         var systemContent = Content.fromParts(Part.fromText(systemPrompt));
 
@@ -66,6 +68,7 @@ public class GeminiModel extends AbstractModel {
             tools.forEach(tool -> {
 
                 var schema = new HashMap<String, Object>();
+
                 schema.put("type", "object");
                 schema.put("properties", tool.properties());
                 schema.put("required", tool.required());

@@ -6,7 +6,6 @@ import ai.agentican.blocks.llm.api.ModelResponse;
 import ai.agentican.blocks.llm.api.ModelUsage;
 import ai.agentican.blocks.llm.api.ToolCall;
 import ai.agentican.blocks.llm.api.ToolDefinition;
-import ai.agentican.blocks.llm.impl.AbstractModel;
 import ai.agentican.blocks.llm.impl.Block;
 import ai.agentican.blocks.llm.impl.ModelMessage;
 import ai.agentican.blocks.llm.impl.Role;
@@ -43,23 +42,30 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BedrockModel extends AbstractModel {
+public class BedrockModel implements ProviderModel {
 
     private static final Logger LOG = LoggerFactory.getLogger(BedrockModel.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    private final String model;
+    private final long maxTokens;
+    private final Double temperature;
     private final BedrockRuntimeClient client;
 
-    /** Uses AWS's default credential chain (env vars / profile / role). */
     public BedrockModel(String model) {
+
         this(null, null, null, model, 16384L, null);
     }
 
-    /** Static credentials. Pass null {@code accessKeyId}/{@code secretAccessKey} to use the default chain. */
-    public BedrockModel(String accessKeyId, String secretAccessKey, String region,
-                        String model, long maxTokens, Double temperature) {
+    public BedrockModel(String accessKeyId, String secretAccessKey, String region, String model,
+                        long maxTokens, Double temperature) {
 
-        super(model, maxTokens, temperature);
+        if (model == null || model.isBlank())
+            throw new IllegalArgumentException("model is required");
+
+        this.model = model;
+        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.temperature = temperature;
 
         var builder = BedrockRuntimeClient.builder();
 
@@ -67,11 +73,15 @@ public class BedrockModel extends AbstractModel {
             builder.region(Region.of(region));
 
         if (accessKeyId != null && !accessKeyId.isBlank()) {
+
             if (secretAccessKey == null || secretAccessKey.isBlank())
                 throw new IllegalArgumentException("secretAccessKey is required when accessKeyId is set");
+
             builder.credentialsProvider(StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(accessKeyId, secretAccessKey)));
-        } else {
+        }
+        else {
+
             builder.credentialsProvider(DefaultCredentialsProvider.create());
         }
 
@@ -79,13 +89,11 @@ public class BedrockModel extends AbstractModel {
     }
 
     @Override
-    protected <T> ModelResponse<T> executeChat(String systemPrompt,
-                                               List<ModelMessage> messages,
-                                               List<ToolDefinition> tools,
-                                               Class<T> outputType) {
+    public <T> ModelResponse<T> execute(String systemPrompt,
+                                         List<ModelMessage> messages,
+                                         List<ToolDefinition> tools,
+                                         Class<T> outputType) {
 
-        // Bedrock's Converse API has no native response-schema knob, so for typed outputTokens we
-        // append the schema to the system prompt and instruct JSON-only outputTokens, then parse.
         var effectiveSystemPrompt = Utils.isUnstructured(outputType)
                 ? systemPrompt
                 : appendSchemaInstructions(systemPrompt, outputType);
@@ -96,6 +104,7 @@ public class BedrockModel extends AbstractModel {
 
         var inferenceBuilder = InferenceConfiguration.builder()
                 .maxTokens((int) Math.min(maxTokens, Integer.MAX_VALUE));
+
         if (temperature != null) inferenceBuilder.temperature(temperature.floatValue());
 
         var converseBuilder = ConverseRequest.builder()

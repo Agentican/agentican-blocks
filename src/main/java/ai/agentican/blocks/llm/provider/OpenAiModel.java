@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAiModel extends AbstractModel {
+public class OpenAiModel implements ProviderModel {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenAiModel.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -44,6 +44,7 @@ public class OpenAiModel extends AbstractModel {
     public static final String GROQ = "groq";
 
     private static final Map<String, String> BASE_URLS = new HashMap<>();
+
     static {
         BASE_URLS.put(OPENAI, null);
         BASE_URLS.put(GROQ, "https://api.groq.com/openai/v1");
@@ -52,23 +53,25 @@ public class OpenAiModel extends AbstractModel {
     private static final String GROQ_GPT_OSS_PREFIX = "openai/gpt-oss-";
 
     private final String provider;
+    private final String model;
+    private final long maxTokens;
+    private final Double temperature;
     private final OpenAIClient client;
 
     public OpenAiModel(String apiKey, String model) {
+
         this(apiKey, OPENAI, model, 16384L, null);
     }
 
     public OpenAiModel(String apiKey, String model, long maxTokens, Double temperature) {
+
         this(apiKey, OPENAI, model, maxTokens, temperature);
     }
 
-    /** {@code provider} must be {@link #OPENAI} or {@link #GROQ}. */
     public OpenAiModel(String apiKey, String provider, String model, long maxTokens, Double temperature) {
 
-        super(model, maxTokens, temperature);
-
-        if (apiKey == null || apiKey.isBlank())
-            throw new IllegalArgumentException("apiKey is required");
+        if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("apiKey is required");
+        if (model == null || model.isBlank()) throw new IllegalArgumentException("model is required");
 
         if (!BASE_URLS.containsKey(provider))
             throw new IllegalArgumentException(
@@ -76,6 +79,9 @@ public class OpenAiModel extends AbstractModel {
                     + " (expected one of " + BASE_URLS.keySet() + ")");
 
         this.provider = provider;
+        this.model = model;
+        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.temperature = temperature;
 
         var clientBuilder = OpenAIOkHttpClient.builder().apiKey(apiKey);
         var baseUrl = BASE_URLS.get(provider);
@@ -84,10 +90,10 @@ public class OpenAiModel extends AbstractModel {
     }
 
     @Override
-    protected <T> ModelResponse<T> executeChat(String systemPrompt,
-                                               List<ModelMessage> messages,
-                                               List<ToolDefinition> tools,
-                                               Class<T> outputType) {
+    public <T> ModelResponse<T> execute(String systemPrompt,
+                                         List<ModelMessage> messages,
+                                         List<ToolDefinition> tools,
+                                         Class<T> outputType) {
 
         var paramsBuilder = ResponseCreateParams.builder()
                 .model(model)

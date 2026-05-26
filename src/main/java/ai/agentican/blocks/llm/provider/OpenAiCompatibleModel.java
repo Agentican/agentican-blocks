@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAiCompatibleModel extends AbstractModel {
+public class OpenAiCompatibleModel implements ProviderModel {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenAiCompatibleModel.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -43,6 +43,9 @@ public class OpenAiCompatibleModel extends AbstractModel {
     public static final String FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 
     private final String baseUrl;
+    private final String model;
+    private final long maxTokens;
+    private final Double temperature;
     private final OpenAIClient client;
 
     public OpenAiCompatibleModel(String apiKey, String baseUrl, String model) {
@@ -52,14 +55,17 @@ public class OpenAiCompatibleModel extends AbstractModel {
     public OpenAiCompatibleModel(String apiKey, String baseUrl, String model,
                                  long maxTokens, Double temperature) {
 
-        super(model, maxTokens, temperature);
-
         if (apiKey == null || apiKey.isBlank())
             throw new IllegalArgumentException("apiKey is required");
         if (baseUrl == null || baseUrl.isBlank())
             throw new IllegalArgumentException("baseUrl is required");
+        if (model == null || model.isBlank())
+            throw new IllegalArgumentException("model is required");
 
         this.baseUrl = baseUrl;
+        this.model = model;
+        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.temperature = temperature;
         this.client = OpenAIOkHttpClient.builder()
                 .baseUrl(baseUrl)
                 .apiKey(apiKey)
@@ -67,10 +73,8 @@ public class OpenAiCompatibleModel extends AbstractModel {
     }
 
     @Override
-    protected <T> ModelResponse<T> executeChat(String systemPrompt,
-                                               List<ModelMessage> messages,
-                                               List<ToolDefinition> tools,
-                                               Class<T> outputType) {
+    public <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
+                                        List<ToolDefinition> tools, Class<T> outputType) {
 
         var paramsBuilder = ChatCompletionCreateParams.builder()
                 .model(model)

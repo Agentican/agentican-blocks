@@ -8,19 +8,19 @@ import ai.agentican.blocks.llm.api.ToolDefinition;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ChatSession implements ModelSession {
+public final class DefaultModelSession implements ModelSession {
 
-    private final AbstractModel model;
+    private final ModelFactory engine;
     private final String systemPrompt;
     private final List<ToolDefinition> tools;
     private final List<ModelMessage> history = new ArrayList<>();
 
-    ChatSession(AbstractModel model, String systemPrompt, List<ToolDefinition> tools) {
+    public DefaultModelSession(ModelFactory engine, String systemPrompt, List<ToolDefinition> tools) {
 
-        if (model == null) throw new IllegalArgumentException("model is required");
+        if (engine == null) throw new IllegalArgumentException("engine is required");
         if (Utils.isMissing(systemPrompt)) throw new IllegalArgumentException("System prompt is required");
 
-        this.model = model;
+        this.engine = engine;
         this.systemPrompt = systemPrompt;
         this.tools = tools != null ? List.copyOf(tools) : List.of();
     }
@@ -34,7 +34,7 @@ public final class ChatSession implements ModelSession {
     @Override
     public <T> ModelResponse<T> send(String userMessage, Class<T> outputType) {
 
-        if (userMessage == null || userMessage.isBlank())
+        if (Utils.isMissing(userMessage))
             throw new IllegalArgumentException("userMessage is required");
 
         history.add(ModelMessage.user(new TextBlock(userMessage)));
@@ -43,12 +43,11 @@ public final class ChatSession implements ModelSession {
 
         try {
 
-            response = model.chat(systemPrompt, List.copyOf(history), tools, outputType);
+            response = engine.send(systemPrompt, List.copyOf(history), tools, outputType);
         }
         catch (RuntimeException e) {
 
             history.removeLast();
-
             throw e;
         }
 

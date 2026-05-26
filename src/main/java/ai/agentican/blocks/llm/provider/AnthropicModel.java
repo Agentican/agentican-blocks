@@ -4,7 +4,6 @@ import ai.agentican.blocks.llm.*;
 
 import ai.agentican.blocks.llm.api.*;
 import ai.agentican.blocks.llm.api.StopReason;
-import ai.agentican.blocks.llm.impl.AbstractModel;
 import ai.agentican.blocks.llm.impl.Block;
 import ai.agentican.blocks.llm.impl.ModelMessage;
 import ai.agentican.blocks.llm.impl.Role;
@@ -22,32 +21,37 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class AnthropicModel extends AbstractModel {
+public class AnthropicModel implements ProviderModel {
 
     private static final CacheControlEphemeral CACHE_CONTROL = CacheControlEphemeral.builder().build();
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    private final String model;
+    private final long maxTokens;
+    private final Double temperature;
     private final AnthropicClient client;
 
     public AnthropicModel(String apiKey, String model) {
+
         this(apiKey, model, 16384L, null);
     }
 
     public AnthropicModel(String apiKey, String model, long maxTokens, Double temperature) {
 
-        super(model, maxTokens, temperature);
-
         if (apiKey == null || apiKey.isBlank())
             throw new IllegalArgumentException("apiKey is required");
+        if (model == null || model.isBlank())
+            throw new IllegalArgumentException("model is required");
 
+        this.model = model;
+        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.temperature = temperature;
         this.client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
     }
 
     @Override
-    protected <T> ModelResponse<T> executeChat(String systemPrompt,
-                                               List<ModelMessage> messages,
-                                               List<ToolDefinition> tools,
-                                               Class<T> outputType) {
+    public <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
+                                        List<ToolDefinition> tools, Class<T> outputType) {
 
         var systemPromptBlock = TextBlockParam.builder()
                 .text(systemPrompt)
@@ -135,9 +139,11 @@ public class AnthropicModel extends AbstractModel {
         if (Utils.isUnstructured(outputType) || text == null || text.isBlank()) return null;
 
         try {
+
             return JSON.readValue(text, outputType);
         }
         catch (Exception e) {
+
             throw new RuntimeException("Failed to deserialize response as "
                     + outputType.getSimpleName() + ": " + e.getMessage(), e);
         }
