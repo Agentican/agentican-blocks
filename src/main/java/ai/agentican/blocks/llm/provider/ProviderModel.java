@@ -9,6 +9,6 @@ import java.util.List;
 @FunctionalInterface
 public interface ProviderModel {
 
-    <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages, List<ToolDefinition> tools,
-                                 Class<T> outputType);
+    <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
+                                 List<ToolDefinition> tools, Class<T> outputType);
 }
