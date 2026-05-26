@@ -57,7 +57,7 @@ public final class ModelFactory implements Model {
     public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
                                       List<ToolDefinition> tools, Class<T> outputType) {
 
-        return retry(() -> impl.execute(systemPrompt, messages, tools, outputType));
+        return retry(() -> impl.send(systemPrompt, messages, tools, outputType));
     }
 
     @Override

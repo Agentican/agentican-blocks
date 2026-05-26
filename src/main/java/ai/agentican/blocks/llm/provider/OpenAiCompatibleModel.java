@@ -43,49 +43,44 @@ public class OpenAiCompatibleModel implements ProviderModel {
     public static final String FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 
     private final String baseUrl;
-    private final String model;
+    private final String modelName;
     private final long maxTokens;
     private final Double temperature;
+
     private final OpenAIClient client;
 
-    public OpenAiCompatibleModel(String apiKey, String baseUrl, String model) {
-        this(apiKey, baseUrl, model, 16384L, null);
+    public OpenAiCompatibleModel(String apiKey, String baseUrl, String modelName) {
+        this(apiKey, baseUrl, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public OpenAiCompatibleModel(String apiKey, String baseUrl, String model,
+    public OpenAiCompatibleModel(String apiKey, String baseUrl, String modelName,
                                  long maxTokens, Double temperature) {
 
-        if (apiKey == null || apiKey.isBlank())
-            throw new IllegalArgumentException("apiKey is required");
-        if (baseUrl == null || baseUrl.isBlank())
-            throw new IllegalArgumentException("baseUrl is required");
-        if (model == null || model.isBlank())
-            throw new IllegalArgumentException("model is required");
+        if (Utils.isMissing(apiKey)) throw new IllegalArgumentException("API key required");
+        if (Utils.isMissing(baseUrl)) throw new IllegalArgumentException("Base URL required");
+        if (Utils.isMissing(modelName)) throw new IllegalArgumentException("Model name required");
 
         this.baseUrl = baseUrl;
-        this.model = model;
-        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.modelName = modelName;
+        this.maxTokens = maxTokens > 0 ? maxTokens : DEFAULT_MAX_TOKENS;
         this.temperature = temperature;
-        this.client = OpenAIOkHttpClient.builder()
-                .baseUrl(baseUrl)
-                .apiKey(apiKey)
-                .build();
+
+        this.client = OpenAIOkHttpClient.builder().baseUrl(baseUrl).apiKey(apiKey).build();
     }
 
     @Override
-    public <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
-                                        List<ToolDefinition> tools, Class<T> outputType) {
+    public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
+                                     List<ToolDefinition> tools, Class<T> outputType) {
 
         var paramsBuilder = ChatCompletionCreateParams.builder()
-                .model(model)
+                .model(modelName)
                 .maxCompletionTokens(maxTokens)
-                .addMessage(ChatCompletionSystemMessageParam.builder()
-                        .content(systemPrompt)
-                        .build());
+                .addMessage(ChatCompletionSystemMessageParam.builder().content(systemPrompt).build());
 
         translateMessages(messages).forEach(paramsBuilder::addMessage);
 
-        if (temperature != null) paramsBuilder.temperature(temperature);
+        if (temperature != null)
+            paramsBuilder.temperature(temperature);
 
         if (!Utils.isUnstructured(outputType))
             paramsBuilder.responseFormat(buildJsonSchemaFormat(outputType));

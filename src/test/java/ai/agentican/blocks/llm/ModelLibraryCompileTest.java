@@ -39,8 +39,8 @@ class ModelLibraryCompileTest {
         ProviderModel provider = new ProviderModel() {
             @Override
             @SuppressWarnings("unchecked")
-            public <T> ModelResponse<T> execute(String sp, List<ModelMessage> messages,
-                                                 List<ToolDefinition> t, Class<T> outputType) {
+            public <T> ModelResponse<T> send(String sp, List<ModelMessage> messages,
+                                             List<ToolDefinition> t, Class<T> outputType) {
                 var lastUser = messages.get(messages.size() - 1);
                 var text = ((TextMessageBlock) lastUser.messageBlocks().get(0)).text();
                 return (ModelResponse<T>) sendImpl.apply(new ModelRequest<>(sp, text,

@@ -9,6 +9,8 @@ import java.util.List;
 @FunctionalInterface
 public interface ProviderModel {
 
-    <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
-                                 List<ToolDefinition> tools, Class<T> outputType);
+    long DEFAULT_MAX_TOKENS = 16384L;
+
+    <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
+                              List<ToolDefinition> tools, Class<T> outputType);
 }

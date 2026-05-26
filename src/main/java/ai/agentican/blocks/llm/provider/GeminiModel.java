@@ -33,29 +33,31 @@ public class GeminiModel implements ProviderModel {
     private static final Logger LOG = LoggerFactory.getLogger(GeminiModel.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final String model;
+    private final String modelName;
     private final long maxTokens;
     private final Double temperature;
+
     private final Client client;
 
-    public GeminiModel(String apiKey, String model) {
-        this(apiKey, model, 16384L, null);
+    public GeminiModel(String apiKey, String modelName) {
+        this(apiKey, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public GeminiModel(String apiKey, String model, long maxTokens, Double temperature) {
+    public GeminiModel(String apiKey, String modelName, long maxTokens, Double temperature) {
 
-        if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("apiKey is required");
-        if (model == null || model.isBlank()) throw new IllegalArgumentException("model is required");
+        if (Utils.isMissing(apiKey)) throw new IllegalArgumentException("API key required");
+        if (Utils.isMissing(modelName)) throw new IllegalArgumentException("Model name required");
 
-        this.model = model;
-        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.modelName = modelName;
+        this.maxTokens = maxTokens > 0 ? maxTokens : DEFAULT_MAX_TOKENS;
         this.temperature = temperature;
+
         this.client = Client.builder().apiKey(apiKey).build();
     }
 
     @Override
-    public <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
-                                        List<ToolDefinition> tools, Class<T> outputType) {
+    public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
+                                     List<ToolDefinition> tools, Class<T> outputType) {
 
         var systemContent = Content.fromParts(Part.fromText(systemPrompt));
 
@@ -103,7 +105,7 @@ public class GeminiModel implements ProviderModel {
 
         var contents = translateMessages(messages);
 
-        var response = client.models.generateContent(model, contents, configBuilder.build());
+        var response = client.models.generateContent(modelName, contents, configBuilder.build());
 
         return translate(response, outputType);
     }

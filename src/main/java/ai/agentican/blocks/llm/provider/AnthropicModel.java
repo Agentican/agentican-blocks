@@ -24,42 +24,41 @@ public class AnthropicModel implements ProviderModel {
     private static final CacheControlEphemeral CACHE_CONTROL = CacheControlEphemeral.builder().build();
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final String model;
+    private final String modelName;
     private final long maxTokens;
     private final Double temperature;
+
     private final AnthropicClient client;
 
-    public AnthropicModel(String apiKey, String model) {
+    public AnthropicModel(String apiKey, String modelName) {
 
-        this(apiKey, model, 16384L, null);
+        this(apiKey, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public AnthropicModel(String apiKey, String model, long maxTokens, Double temperature) {
+    public AnthropicModel(String apiKey, String modelName, long maxTokens, Double temperature) {
 
-        if (apiKey == null || apiKey.isBlank())
-            throw new IllegalArgumentException("apiKey is required");
-        if (model == null || model.isBlank())
-            throw new IllegalArgumentException("model is required");
+        if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("API key required");
+        if (modelName == null || modelName.isBlank()) throw new IllegalArgumentException("Model name required");
 
-        this.model = model;
-        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.modelName = modelName;
+        this.maxTokens = maxTokens > 0 ? maxTokens : DEFAULT_MAX_TOKENS;
         this.temperature = temperature;
         this.client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
     }
 
     @Override
-    public <T> ModelResponse<T> execute(String systemPrompt, List<ModelMessage> messages,
-                                        List<ToolDefinition> tools, Class<T> outputType) {
+    public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
+                                     List<ToolDefinition> tools, Class<T> outputType) {
 
         var systemPromptBlock = TextBlockParam.builder()
                 .text(systemPrompt)
                 .cacheControl(CACHE_CONTROL)
                 .build();
 
-        var translated = translateMessages(messages);
+        var translated = messageParams(messages);
 
         var messageBuilder = MessageCreateParams.builder()
-                .model(Model.of(model))
+                .model(Model.of(modelName))
                 .maxTokens(maxTokens)
                 .systemOfTextBlockParams(List.of(systemPromptBlock))
                 .messages(translated);
@@ -67,7 +66,7 @@ public class AnthropicModel implements ProviderModel {
         if (temperature != null) messageBuilder.temperature(temperature);
 
         if (!Utils.isUnstructured(outputType))
-            messageBuilder.outputConfig(buildOutputConfig(Utils.schema(outputType)));
+            messageBuilder.outputConfig(outputConfig(Utils.schema(outputType)));
 
         if (tools != null) {
 
@@ -126,13 +125,13 @@ public class AnthropicModel implements ProviderModel {
         long webSearchRequests =
                 usage.serverToolUse().map(stu -> (long) stu.webSearchRequests()).orElse(0L);
 
-        T parsed = parseTyped(responseText, outputType);
+        T output = parse(responseText, outputType);
 
-        return new ModelResponse<>(parsed, responseText, toolCalls, stopReason,
+        return new ModelResponse<>(output, responseText, toolCalls, stopReason,
                 new ModelUsage(inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, webSearchRequests));
     }
 
-    private static <T> T parseTyped(String text, Class<T> outputType) {
+    private static <T> T parse(String text, Class<T> outputType) {
 
         if (Utils.isUnstructured(outputType) || text == null || text.isBlank()) return null;
 
@@ -147,77 +146,86 @@ public class AnthropicModel implements ProviderModel {
         }
     }
 
-    private static List<MessageParam> translateMessages(List<ModelMessage> modelMessages) {
+    private static List<MessageParam> messageParams(List<ModelMessage> modelMessages) {
 
-        var out = new ArrayList<MessageParam>(modelMessages.size());
+        var messagesParams = new ArrayList<MessageParam>(modelMessages.size());
 
-        var firstUserSeen = false;
+        var userMessageCached = false;
 
-        for (var msg : modelMessages) {
+        for (var message : modelMessages) {
 
-            var blocks = new ArrayList<ContentBlockParam>(msg.messageBlocks().size());
+            var contentBlocks = new ArrayList<ContentBlockParam>(message.messageBlocks().size());
 
-            var isFirstUser = !firstUserSeen && msg.messageRole() == MessageRole.USER;
+            var cacheUserMessage = !userMessageCached && message.messageRole() == MessageRole.USER;
 
-            var lastIdx = msg.messageBlocks().size() - 1;
+            var lastUserMessageBlockIndex = message.messageBlocks().size() - 1;
 
-            for (int i = 0; i < msg.messageBlocks().size(); i++) {
+            for (int blockIndex = 0; blockIndex < message.messageBlocks().size(); blockIndex++) {
 
-                var block = msg.messageBlocks().get(i);
-                var applyCache = isFirstUser && i == lastIdx;
+                var block = message.messageBlocks().get(blockIndex);
 
-                blocks.add(translateBlock(block, applyCache));
+                var applyCache = cacheUserMessage && blockIndex == lastUserMessageBlockIndex;
+
+                contentBlocks.add(contentBlockParams(block, applyCache));
             }
 
-            out.add(MessageParam.builder()
-                    .role(msg.messageRole() == MessageRole.USER
-                            ? MessageParam.Role.USER : MessageParam.Role.ASSISTANT)
-                    .contentOfBlockParams(blocks)
+            messagesParams.add(MessageParam.builder()
+                    .role(message.messageRole() == MessageRole.USER ? MessageParam.Role.USER : MessageParam.Role.ASSISTANT)
+                    .contentOfBlockParams(contentBlocks)
                     .build());
 
-            if (isFirstUser) firstUserSeen = true;
+            if (cacheUserMessage)
+                userMessageCached = true;
         }
 
-        return out;
+        return messagesParams;
     }
 
-    private static ContentBlockParam translateBlock(MessageBlock messageBlock, boolean applyCache) {
+    private static ContentBlockParam contentBlockParams(MessageBlock messageBlock, boolean applyCache) {
 
         return switch (messageBlock) {
 
-            case TextMessageBlock t -> {
+            case TextMessageBlock textBlock -> {
 
-                var b = TextBlockParam.builder().text(t.text());
-                if (applyCache) b.cacheControl(CACHE_CONTROL);
-                yield ContentBlockParam.ofText(b.build());
+                var block = TextBlockParam.builder().text(textBlock.text());
+
+                if (applyCache)
+                    block.cacheControl(CACHE_CONTROL);
+
+                yield ContentBlockParam.ofText(block.build());
             }
 
-            case ToolUseMessageBlock tu -> {
+            case ToolUseMessageBlock toolUseBlock -> {
 
-                var inputJson = JSON.<JsonValue>convertValue(tu.args(), new TypeReference<JsonValue>() {});
+                var toolInputs = JSON.<JsonValue>convertValue(toolUseBlock.args(), new TypeReference<JsonValue>() {});
+
                 yield ContentBlockParam.ofToolUse(ToolUseBlockParam.builder()
-                        .id(tu.id())
-                        .name(tu.toolName())
-                        .input(inputJson != null ? inputJson : JsonValue.from(Map.of()))
+                        .id(toolUseBlock.id())
+                        .name(toolUseBlock.toolName())
+                        .input(toolInputs != null ? toolInputs : JsonValue.from(Map.of()))
                         .build());
             }
 
-            case ToolResultMessageBlock tr -> {
+            case ToolResultMessageBlock toolResultBlock -> {
 
-                var b = ToolResultBlockParam.builder()
-                        .toolUseId(tr.toolUseId())
-                        .content(tr.content());
-                if (tr.isError()) b.isError(true);
-                yield ContentBlockParam.ofToolResult(b.build());
+                var block = ToolResultBlockParam.builder()
+                        .toolUseId(toolResultBlock.toolUseId())
+                        .content(toolResultBlock.content());
+
+                if (toolResultBlock.isError())
+                    block.isError(true);
+
+                yield ContentBlockParam.ofToolResult(block.build());
             }
         };
     }
 
-    private static OutputConfig buildOutputConfig(JsonNode schema) {
+    private static OutputConfig outputConfig(JsonNode schema) {
 
         var schemaBuilder = JsonOutputFormat.Schema.builder();
 
         var fields = JSON.<Map<String, Object>>convertValue(schema, new TypeReference<Map<String, Object>>() {});
+
         fields.forEach((k, v) -> schemaBuilder.putAdditionalProperty(k, JsonValue.from(v)));
 
         var format = JsonOutputFormat.builder().schema(schemaBuilder.build()).build();

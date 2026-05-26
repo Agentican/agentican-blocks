@@ -53,25 +53,26 @@ public class OpenAiModel implements ProviderModel {
     private static final String GROQ_GPT_OSS_PREFIX = "openai/gpt-oss-";
 
     private final String provider;
-    private final String model;
+    private final String modelName;
     private final long maxTokens;
     private final Double temperature;
+
     private final OpenAIClient client;
 
-    public OpenAiModel(String apiKey, String model) {
+    public OpenAiModel(String apiKey, String modelName) {
 
-        this(apiKey, OPENAI, model, 16384L, null);
+        this(apiKey, OPENAI, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public OpenAiModel(String apiKey, String model, long maxTokens, Double temperature) {
+    public OpenAiModel(String apiKey, String modelName, long maxTokens, Double temperature) {
 
-        this(apiKey, OPENAI, model, maxTokens, temperature);
+        this(apiKey, OPENAI, modelName, maxTokens, temperature);
     }
 
-    public OpenAiModel(String apiKey, String provider, String model, long maxTokens, Double temperature) {
+    public OpenAiModel(String apiKey, String provider, String modelName, long maxTokens, Double temperature) {
 
-        if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("apiKey is required");
-        if (model == null || model.isBlank()) throw new IllegalArgumentException("model is required");
+        if (Utils.isMissing(apiKey)) throw new IllegalArgumentException("API key required");
+        if (Utils.isMissing(modelName)) throw new IllegalArgumentException("Model name required");
 
         if (!BASE_URLS.containsKey(provider))
             throw new IllegalArgumentException(
@@ -79,8 +80,8 @@ public class OpenAiModel implements ProviderModel {
                     + " (expected one of " + BASE_URLS.keySet() + ")");
 
         this.provider = provider;
-        this.model = model;
-        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.modelName = modelName;
+        this.maxTokens = maxTokens > 0 ? maxTokens : DEFAULT_MAX_TOKENS;
         this.temperature = temperature;
 
         var clientBuilder = OpenAIOkHttpClient.builder().apiKey(apiKey);
@@ -90,13 +91,13 @@ public class OpenAiModel implements ProviderModel {
     }
 
     @Override
-    public <T> ModelResponse<T> execute(String systemPrompt,
-                                         List<ModelMessage> messages,
-                                         List<ToolDefinition> tools,
-                                         Class<T> outputType) {
+    public <T> ModelResponse<T> send(String systemPrompt,
+                                     List<ModelMessage> messages,
+                                     List<ToolDefinition> tools,
+                                     Class<T> outputType) {
 
         var paramsBuilder = ResponseCreateParams.builder()
-                .model(model)
+                .model(modelName)
                 .instructions(systemPrompt)
                 .maxOutputTokens(maxTokens)
                 .inputOfResponse(translateMessages(messages));
@@ -160,7 +161,7 @@ public class OpenAiModel implements ProviderModel {
                     WebSearchTool.builder().type(WebSearchTool.Type.WEB_SEARCH).build());
 
             case "groq" -> {
-                if (model.startsWith(GROQ_GPT_OSS_PREFIX)) {
+                if (modelName.startsWith(GROQ_GPT_OSS_PREFIX)) {
                     paramsBuilder.addTool(GROQ_BROWSER_SEARCH_TOOL);
                 }
             }

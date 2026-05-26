@@ -45,24 +45,25 @@ public class BedrockModel implements ProviderModel {
     private static final Logger LOG = LoggerFactory.getLogger(BedrockModel.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final String model;
+    private final String modelName;
     private final long maxTokens;
     private final Double temperature;
+
     private final BedrockRuntimeClient client;
 
-    public BedrockModel(String model) {
+    public BedrockModel(String modelName) {
 
-        this(null, null, null, model, 16384L, null);
+        this(null, null, null, modelName, DEFAULT_MAX_TOKENS, null);
     }
 
-    public BedrockModel(String accessKeyId, String secretAccessKey, String region, String model,
+    public BedrockModel(String accessKeyId, String secretAccessKey, String region, String modelName,
                         long maxTokens, Double temperature) {
 
-        if (model == null || model.isBlank())
-            throw new IllegalArgumentException("model is required");
+        if (Utils.isMissing(modelName))
+            throw new IllegalArgumentException("Model name required");
 
-        this.model = model;
-        this.maxTokens = maxTokens > 0 ? maxTokens : 16384L;
+        this.modelName = modelName;
+        this.maxTokens = maxTokens > 0 ? maxTokens : DEFAULT_MAX_TOKENS;
         this.temperature = temperature;
 
         var builder = BedrockRuntimeClient.builder();
@@ -70,10 +71,10 @@ public class BedrockModel implements ProviderModel {
         if (region != null && !region.isBlank())
             builder.region(Region.of(region));
 
-        if (accessKeyId != null && !accessKeyId.isBlank()) {
+        if (Utils.isFound(accessKeyId)) {
 
-            if (secretAccessKey == null || secretAccessKey.isBlank())
-                throw new IllegalArgumentException("secretAccessKey is required when accessKeyId is set");
+            if (Utils.isMissing(secretAccessKey))
+                throw new IllegalArgumentException("Secret access key required");
 
             builder.credentialsProvider(StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(accessKeyId, secretAccessKey)));
@@ -87,10 +88,8 @@ public class BedrockModel implements ProviderModel {
     }
 
     @Override
-    public <T> ModelResponse<T> execute(String systemPrompt,
-                                         List<ModelMessage> messages,
-                                         List<ToolDefinition> tools,
-                                         Class<T> outputType) {
+    public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
+                                     List<ToolDefinition> tools, Class<T> outputType) {
 
         var effectiveSystemPrompt = Utils.isUnstructured(outputType)
                 ? systemPrompt
@@ -100,13 +99,13 @@ public class BedrockModel implements ProviderModel {
 
         var translated = translateMessages(messages);
 
-        var inferenceBuilder = InferenceConfiguration.builder()
-                .maxTokens((int) Math.min(maxTokens, Integer.MAX_VALUE));
+        var inferenceBuilder = InferenceConfiguration.builder().maxTokens((int) Math.min(maxTokens, Integer.MAX_VALUE));
 
-        if (temperature != null) inferenceBuilder.temperature(temperature.floatValue());
+        if (temperature != null)
+            inferenceBuilder.temperature(temperature.floatValue());
 
         var converseBuilder = ConverseRequest.builder()
-                .modelId(model)
+                .modelId(modelName)
                 .system(systemBlock)
                 .messages(translated)
                 .inferenceConfig(inferenceBuilder.build());
@@ -118,6 +117,7 @@ public class BedrockModel implements ProviderModel {
             tools.forEach(tool -> {
 
                 var schema = new LinkedHashMap<String, Object>();
+
                 schema.put("type", "object");
                 schema.put("properties", tool.properties() != null ? tool.properties() : Map.of());
                 schema.put("required", tool.required() != null ? tool.required() : List.of());
@@ -144,10 +144,13 @@ public class BedrockModel implements ProviderModel {
     private static <T> String appendSchemaInstructions(String systemPrompt, Class<T> outputType) {
 
         String schemaJson;
+
         try {
+
             schemaJson = JSON.writeValueAsString(Utils.schema(outputType));
         }
         catch (Exception e) {
+
             throw new RuntimeException("Failed to render schema for " + outputType.getSimpleName(), e);
         }
 
