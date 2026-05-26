@@ -6,4 +6,14 @@ public record TextMessageBlock(String text) implements MessageBlock {
 
         if (text == null) text = "";
     }
+
+    public static TextMessageBlock of(String text) {
+
+        return new TextMessageBlock(text);
+    }
+
+    public static TextMessageBlock of(String format, Object... args) {
+
+        return new TextMessageBlock(String.format(format, args));
+    }
 }

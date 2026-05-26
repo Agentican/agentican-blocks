@@ -14,8 +14,7 @@ public record SingleResponse<T>(
         if (stopReason == null)
             throw new IllegalArgumentException("Stop reason required");
 
-        if (toolCalls == null)
-            toolCalls = List.of();
+        toolCalls = toolCalls == null ? List.of() : List.copyOf(toolCalls);
 
         if (usage == null)
             usage = ModelUsage.ZERO;

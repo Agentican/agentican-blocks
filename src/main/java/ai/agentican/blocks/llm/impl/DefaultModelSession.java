@@ -13,7 +13,7 @@ public final class DefaultModelSession implements ModelSession {
     private final ModelFactory engine;
     private final String systemPrompt;
     private final List<ToolDefinition> tools;
-    private final List<ModelMessage> history = new ArrayList<>(); // TOOD consider List.copyOf for access
+    private final List<ModelMessage> history = new ArrayList<>();
 
     public DefaultModelSession(ModelFactory engine, String systemPrompt, List<ToolDefinition> tools) {
 
@@ -22,7 +22,7 @@ public final class DefaultModelSession implements ModelSession {
 
         this.engine = engine;
         this.systemPrompt = systemPrompt;
-        this.tools = tools != null ? tools : List.of();
+        this.tools = tools == null ? List.of() : List.copyOf(tools);
     }
 
     @Override
@@ -60,6 +60,6 @@ public final class DefaultModelSession implements ModelSession {
     @Override
     public List<ModelMessage> messages() {
 
-        return history;
+        return List.copyOf(history);
     }
 }

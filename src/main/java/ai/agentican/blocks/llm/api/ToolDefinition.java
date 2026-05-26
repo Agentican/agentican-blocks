@@ -19,8 +19,8 @@ public record ToolDefinition(
         if (Utils.isMissing(description))
             throw new IllegalArgumentException("Tool description required");
 
-        if (properties == null) properties = Map.of();
-        if (required == null) required = List.of();
+        properties = properties == null ? Map.of() : Map.copyOf(properties);
+        required = required == null ? List.of() : List.copyOf(required);
     }
 
     public ToolDefinition(String name, String description, Map<String, Object> properties) {

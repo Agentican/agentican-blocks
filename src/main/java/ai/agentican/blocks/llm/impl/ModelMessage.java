@@ -8,8 +8,7 @@ public record ModelMessage(MessageRole messageRole, List<MessageBlock> messageBl
 
         if (messageRole == null) throw new IllegalArgumentException("Message role is required");
 
-        if (messageBlocks == null)
-            messageBlocks = List.of();
+        messageBlocks = messageBlocks == null ? List.of() : List.copyOf(messageBlocks);
     }
 
     public static ModelMessage user(MessageBlock... messageBlocks) {

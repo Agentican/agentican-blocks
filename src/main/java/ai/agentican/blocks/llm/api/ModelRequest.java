@@ -16,8 +16,7 @@ public record ModelRequest<T>(
         if (userMessage == null || userMessage.isBlank())
             throw new IllegalArgumentException("User message required");
 
-        if (tools == null)
-            tools = List.of();
+        tools = tools == null ? List.of() : List.copyOf(tools);
     }
 
     public static ModelRequest<Void> of(String systemPrompt, String userMessage) {

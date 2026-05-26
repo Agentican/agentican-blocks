@@ -13,8 +13,23 @@ public record ToolResultMessageBlock(
         if (content == null) content = "";
     }
 
-    public ToolResultMessageBlock(String toolUseId, String content) {
+    public static Builder builder() { return new Builder(); }
 
-        this(toolUseId, content, false);
+    public static final class Builder {
+
+        private String toolUseId;
+        private String content = "";
+        private boolean isError = false;
+
+        private Builder() {}
+
+        public Builder toolUseId(String toolUseId) { this.toolUseId = toolUseId; return this; }
+        public Builder content(String content) { this.content = content; return this; }
+        public Builder isError(boolean isError) { this.isError = isError; return this; }
+
+        public ToolResultMessageBlock build() {
+
+            return new ToolResultMessageBlock(toolUseId, content, isError);
+        }
     }
 }

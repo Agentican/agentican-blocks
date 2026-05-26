@@ -2,6 +2,8 @@ package ai.agentican.blocks.llm.api;
 
 import ai.agentican.blocks.llm.Utils;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public record ToolCall(
@@ -17,6 +19,6 @@ public record ToolCall(
         if (Utils.isMissing(name))
             throw new IllegalArgumentException("Tool name required");
 
-        if (args == null) args = Map.of();
+        args = args == null ? Map.of() : Collections.unmodifiableMap(new HashMap<>(args));
     }
 }

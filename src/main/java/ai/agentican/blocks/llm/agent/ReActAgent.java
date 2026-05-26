@@ -27,26 +27,32 @@ public final class ReActAgent {
     private final Model model;
     private final String systemPrompt;
     private final Map<String, Tool> tools;
-    private final List<ToolDefinition> toolDefinitions;
     private final int maxTurns;
+
+    private final List<ToolDefinition> toolDefinitions;
 
     private ReActAgent(Model model, String systemPrompt, Map<String, Tool> tools, int maxTurns) {
 
         this.model = model;
         this.systemPrompt = systemPrompt;
         this.tools = Map.copyOf(tools);
-        this.toolDefinitions = tools.values().stream().map(Tool::definition).toList();
         this.maxTurns = maxTurns;
+
+        this.toolDefinitions = tools.values().stream().map(Tool::definition).toList();
     }
 
-    public LoopResponse<Void> run(String userTask) {
+    public LoopResponse<Void> run(String task) {
 
-        if (Utils.isMissing(userTask))
+        if (Utils.isMissing(task))
             throw new IllegalArgumentException("User task required");
 
         var messageHistory = new ArrayList<ModelMessage>();
 
-        messageHistory.add(ModelMessage.user(new TextMessageBlock(userTask)));
+        var userMessageBlock = TextMessageBlock.of(task);
+
+        var userMessage = ModelMessage.user(userMessageBlock);
+
+        messageHistory.add(userMessage);
 
         var modelUsage = ModelUsage.ZERO;
 
@@ -54,80 +60,138 @@ public final class ReActAgent {
 
             var modelResponse = model.send(systemPrompt, messageHistory, toolDefinitions, Void.class);
 
-            modelUsage = modelUsage.plus(modelResponse.usage());
+            var responseText = modelResponse.text();
+            var stopReason = modelResponse.stopReason();
 
-            var assistantMessage = toAssistantMessage(modelResponse.text(), modelResponse.toolCalls());
+            var addlModelUsage = modelResponse.usage();
+
+            modelUsage = modelUsage.plus(addlModelUsage);
+
+            var assistantMessage = toAssistantMessage(modelResponse);
 
             messageHistory.add(assistantMessage);
 
-            if (modelResponse.stopReason() != StopReason.TOOL_USE || modelResponse.toolCalls().isEmpty())
-                return new LoopResponse<>(null, modelResponse.text(), List.of(), modelResponse.stopReason(), modelUsage,
-                        List.copyOf(messageHistory), turn + 1);
+            if (stopReason != StopReason.TOOL_USE || modelResponse.toolCalls().isEmpty())
+                return LoopResponse.<Void>builder()
+                        .text(responseText)
+                        .stopReason(stopReason)
+                        .usage(modelUsage)
+                        .messages(messageHistory)
+                        .turns(turn + 1)
+                        .build();
 
-            var resultBlocks = new ArrayList<MessageBlock>();
+            var toolResultBlocks = new ArrayList<MessageBlock>();
 
-            for (var call : modelResponse.toolCalls())
-                resultBlocks.add(executeToolCall(call));
+            for (var toolCall : modelResponse.toolCalls()) {
 
-            var toolResponse = new ModelMessage(MessageRole.USER, resultBlocks);
+                var toolResultBlock = callTool(toolCall);
+
+                toolResultBlocks.add(toolResultBlock);
+            }
+
+            var toolResponse = ModelMessage.user(toolResultBlocks);
 
             messageHistory.add(toolResponse);
         }
 
-        return new LoopResponse<>(null, lastAssistantText(messageHistory), List.of(), StopReason.MAX_TURNS, modelUsage,
-                List.copyOf(messageHistory), maxTurns);
+        var responseText = lastAssistantText(messageHistory);
+
+        return LoopResponse.<Void>builder()
+                .text(responseText)
+                .stopReason(StopReason.MAX_TURNS)
+                .usage(modelUsage)
+                .messages(messageHistory)
+                .turns(maxTurns)
+                .build();
     }
 
-    private ToolResultMessageBlock executeToolCall(ToolCall call) {
+    private ToolResultMessageBlock callTool(ToolCall toolCall) {
 
-        var tool = tools.get(call.name());
+        var toolCallId = toolCall.id();
+        var toolName = toolCall.name();
+        
+        var tool = tools.get(toolName);
 
         if (tool == null) {
 
-            LOG.warn("Unknown tool requested: {}", call.name());
+            LOG.warn("Unknown tool: {}", toolName);
 
-            return new ToolResultMessageBlock(call.id(), "Unknown tool: " + call.name(), true);
+            return ToolResultMessageBlock.builder()
+                    .toolUseId(toolCallId)
+                    .content("Unknown tool: " + toolName)
+                    .isError(true)
+                    .build();
         }
 
         try {
+            
+            var toolArgs = toolCall.args();
 
-            var output = tool.execute(call.args());
+            var tmpToolResult = tool.execute(toolArgs);
 
-            return new ToolResultMessageBlock(call.id(), output != null ? output : "", false);
+            var toolResult = tmpToolResult != null ? tmpToolResult : "";
+
+            return ToolResultMessageBlock.builder()
+                    .toolUseId(toolCallId)
+                    .content(toolResult)
+                    .build();
         }
         catch (Exception e) {
 
-            LOG.warn("Tool {} failed: {}", call.name(), e.getMessage());
+            LOG.warn("Tool {} failed: {}", toolCall.name(), e.getMessage());
 
-            var msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            var errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
 
-            return new ToolResultMessageBlock(call.id(), msg, true);
+            return ToolResultMessageBlock.builder()
+                    .toolUseId(toolCallId)
+                    .content(errorMessage)
+                    .isError(true)
+                    .build();
         }
     }
 
-    private static ModelMessage toAssistantMessage(String text, List<ToolCall> toolCalls) {
+    private static ModelMessage toAssistantMessage(ModelResponse<Void> modelResponse) {
 
         var blocks = new ArrayList<MessageBlock>();
 
-        if (text != null && !text.isBlank())
-            blocks.add(new TextMessageBlock(text));
+        var text = modelResponse.text();
+        var toolCalls = modelResponse.toolCalls();
 
-        for (var call : toolCalls)
-            blocks.add(new ToolUseMessageBlock(call.id(), call.name(), call.args()));
+        if (text != null && !text.isBlank()) {
+
+            var textBlock = TextMessageBlock.of(text);
+
+            blocks.add(textBlock);
+        }
+
+        for (var toolCall : toolCalls) {
+
+            var toolCallId = toolCall.id();
+            var toolName = toolCall.name();
+            var toolArgs = toolCall.args();
+
+            var toolBlock = ToolUseMessageBlock.builder()
+                    .id(toolCallId)
+                    .toolName(toolName)
+                    .args(toolArgs)
+                    .build();
+
+            blocks.add(toolBlock);
+        }
 
         return ModelMessage.assistant(blocks);
     }
 
-    private static String lastAssistantText(List<ModelMessage> history) {
+    private static String lastAssistantText(List<ModelMessage> messageHistory) {
 
-        for (int i = history.size() - 1; i >= 0; i--) {
+        for (int i = messageHistory.size() - 1; i >= 0; i--) {
 
-            var msg = history.get(i);
+            var message = messageHistory.get(i);
 
-            if (msg.messageRole() != MessageRole.ASSISTANT) continue;
+            if (message.messageRole() != MessageRole.ASSISTANT) continue;
 
-            for (var block : msg.messageBlocks())
-                if (block instanceof TextMessageBlock text && !text.text().isBlank()) return text.text();
+            for (var block : message.messageBlocks())
+                if (block instanceof TextMessageBlock(String text) && !text.isBlank()) return text;
         }
 
         return "";
@@ -137,16 +201,17 @@ public final class ReActAgent {
 
     public static final class Builder {
 
+        private final List<Tool> tools = new ArrayList<>();
+
         private Model model;
         private String systemPrompt;
-        private final List<Tool> tools = new ArrayList<>();
         private int maxTurns = DEFAULT_MAX_TURNS;
 
         private Builder() {}
 
-        public Builder model(Model model)               { this.model = model; return this; }
-        public Builder systemPrompt(String prompt)      { this.systemPrompt = prompt; return this; }
-        public Builder maxTurns(int maxTurns)           { this.maxTurns = maxTurns; return this; }
+        public Builder model(Model model) { this.model = model; return this; }
+        public Builder systemPrompt(String prompt) { this.systemPrompt = prompt; return this; }
+        public Builder maxTurns(int maxTurns) { this.maxTurns = maxTurns; return this; }
 
         public Builder tool(Tool tool) {
 

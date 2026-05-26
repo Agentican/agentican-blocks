@@ -344,12 +344,12 @@ public class Bedrock implements Provider {
         private long maxTokens = DEFAULT_MAX_TOKENS;
         private Double temperature;
 
-        public Builder accessKeyId(String s)            { this.accessKeyId = s; return this; }
-        public Builder secretAccessKey(String s)        { this.secretAccessKey = s; return this; }
-        public Builder region(String region)            { this.region = region; return this; }
-        @Override public Builder model(String model)    { this.modelName = model; return this; }
-        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
-        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+        public Builder accessKeyId(String s) { this.accessKeyId = s; return this; }
+        public Builder secretAccessKey(String s) { this.secretAccessKey = s; return this; }
+        public Builder region(String region) { this.region = region; return this; }
+        @Override public Builder model(String model) { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
         @Override public Provider build() {
             return new Bedrock(accessKeyId, secretAccessKey, region, modelName, maxTokens, temperature);

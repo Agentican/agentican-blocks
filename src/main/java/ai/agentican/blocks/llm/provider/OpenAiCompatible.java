@@ -39,7 +39,7 @@ public class OpenAiCompatible implements Provider {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     public static final String SAMBANOVA_BASE_URL = "https://api.sambanova.ai/v1";
-    public static final String TOGETHER_BASE_URL  = "https://api.together.xyz/v1";
+    public static final String TOGETHER_BASE_URL = "https://api.together.xyz/v1";
     public static final String FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 
     private final String baseUrl;
@@ -304,11 +304,11 @@ public class OpenAiCompatible implements Provider {
         private long maxTokens = DEFAULT_MAX_TOKENS;
         private Double temperature;
 
-        public Builder apiKey(String apiKey)            { this.apiKey = apiKey; return this; }
-        public Builder baseUrl(String baseUrl)          { this.baseUrl = baseUrl; return this; }
-        @Override public Builder model(String model)    { this.modelName = model; return this; }
-        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
-        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+        public Builder apiKey(String apiKey) { this.apiKey = apiKey; return this; }
+        public Builder baseUrl(String baseUrl) { this.baseUrl = baseUrl; return this; }
+        @Override public Builder model(String model) { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
         @Override public Provider build() {
             return new OpenAiCompatible(apiKey, baseUrl, modelName, maxTokens, temperature);

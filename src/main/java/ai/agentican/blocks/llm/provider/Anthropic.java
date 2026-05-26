@@ -242,10 +242,10 @@ public class Anthropic implements Provider {
         private long maxTokens = DEFAULT_MAX_TOKENS;
         private Double temperature;
 
-        public Builder apiKey(String apiKey)            { this.apiKey = apiKey; return this; }
-        @Override public Builder model(String model)    { this.modelName = model; return this; }
-        @Override public Builder maxTokens(long n)      { this.maxTokens = n; return this; }
-        @Override public Builder temperature(Double t)  { this.temperature = t; return this; }
+        public Builder apiKey(String apiKey) { this.apiKey = apiKey; return this; }
+        @Override public Builder model(String model) { this.modelName = model; return this; }
+        @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
+        @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
         @Override public Provider build() {
             return new Anthropic(apiKey, modelName, maxTokens, temperature);
