@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>agentican-blocks</artifactId>
+    <artifactId>agentican-messageBlocks</artifactId>
     <name>Agentican Blocks</name>
     <description>Small Java library for calling LLM providers (OpenAI, Anthropic, Gemini, Bedrock, OpenAI-compatible).</description>
 

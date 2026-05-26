@@ -173,20 +173,20 @@ public class OpenAiModel implements ProviderModel {
 
         for (var msg : modelMessages) {
 
-            if (msg.role() == Role.USER) {
+            if (msg.messageRole() == MessageRole.USER) {
 
-                msg.blocks().stream()
-                        .filter(b -> b instanceof ToolResultBlock)
-                        .map(b -> (ToolResultBlock) b)
+                msg.messageBlocks().stream()
+                        .filter(b -> b instanceof ToolResultMessageBlock)
+                        .map(b -> (ToolResultMessageBlock) b)
                         .forEach(tr -> out.add(ResponseInputItem.ofFunctionCallOutput(
                                 ResponseInputItem.FunctionCallOutput.builder()
                                         .callId(tr.toolUseId())
                                         .output(tr.content())
                                         .build())));
 
-                var text = msg.blocks().stream()
-                        .filter(b -> b instanceof TextBlock)
-                        .map(b -> ((TextBlock) b).text())
+                var text = msg.messageBlocks().stream()
+                        .filter(b -> b instanceof TextMessageBlock)
+                        .map(b -> ((TextMessageBlock) b).text())
                         .filter(t -> !t.isBlank())
                         .reduce((a, b) -> a + "\n\n" + b)
                         .orElse(null);
@@ -199,9 +199,9 @@ public class OpenAiModel implements ProviderModel {
             }
             else {
 
-                var text = msg.blocks().stream()
-                        .filter(b -> b instanceof TextBlock)
-                        .map(b -> ((TextBlock) b).text())
+                var text = msg.messageBlocks().stream()
+                        .filter(b -> b instanceof TextMessageBlock)
+                        .map(b -> ((TextMessageBlock) b).text())
                         .filter(t -> !t.isBlank())
                         .reduce((a, b) -> a + "\n\n" + b)
                         .orElse(null);
@@ -212,9 +212,9 @@ public class OpenAiModel implements ProviderModel {
                             .content(text)
                             .build()));
 
-                msg.blocks().stream()
-                        .filter(b -> b instanceof ToolUseBlock)
-                        .map(b -> (ToolUseBlock) b)
+                msg.messageBlocks().stream()
+                        .filter(b -> b instanceof ToolUseMessageBlock)
+                        .map(b -> (ToolUseMessageBlock) b)
                         .forEach(tu -> {
                             String argsJson;
                             try {
