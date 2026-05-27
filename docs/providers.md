@@ -155,6 +155,64 @@ The shortcut sets the `baseUrl` for you; everything else is the same.
 | `.baseUrl(String)` | Override the API endpoint (preset by the shortcut, or set manually) |
 | `.model(String)` | Model name as the upstream service expects it |
 
+## Hugging Face
+
+Hugging Face's **Inference Providers Router** at `https://router.huggingface.co/v1` is an OpenAI-compatible endpoint that routes your request to one of HF's partner providers (Together, SambaNova, Groq, Cerebras, Replicate, Fal, Fireworks, and others). One token (`HF_TOKEN`) gets you access to thousands of open-weights models.
+
+```java
+var provider = Model.builder().huggingFace()
+        .apiKey(System.getenv("HF_TOKEN"))
+        .model("openai/gpt-oss-120b")
+        .build();
+```
+
+| Method | Purpose |
+|---|---|
+| `.apiKey(String)` | Hugging Face token (`HF_TOKEN`); needs the "Make calls to Inference Providers" permission |
+| `.model(String)` | Hugging Face model id, e.g. `"deepseek-ai/DeepSeek-R1"`, `"openai/gpt-oss-120b"` |
+| `.routeTo(String)` | Force a specific partner (e.g. `"sambanova"`, `"together"`, `"fireworks-ai"`, `"groq"`). Mutually exclusive with `.policy(...)`. |
+| `.policy(String)` | Routing policy: `"fastest"` (default), `"cheapest"`, or `"preferred"` (uses your HF Inference Providers settings order). |
+| `.baseUrl(String)` | Override for dedicated HF Inference Endpoints. Defaults to `https://router.huggingface.co/v1`. |
+
+### Provider routing
+
+By default, HF picks the fastest available partner. Override with either a specific partner or a different policy:
+
+```java
+// Force SambaNova
+var model = Model.builder().huggingFace()
+        .apiKey(System.getenv("HF_TOKEN"))
+        .model("deepseek-ai/DeepSeek-R1")
+        .routeTo("sambanova")
+        .build();
+
+// Pick the cheapest provider available
+var model = Model.builder().huggingFace()
+        .apiKey(System.getenv("HF_TOKEN"))
+        .model("openai/gpt-oss-120b")
+        .policy("cheapest")
+        .build();
+```
+
+Under the hood, both translate to a model-name suffix (`model:partner` or `model:policy`) that HF's router interprets server-side.
+
+### Dedicated Inference Endpoints
+
+For private HF Inference Endpoints (TGI-served, OpenAI-compatible), override the base URL:
+
+```java
+var provider = Model.builder().huggingFace()
+        .apiKey(System.getenv("HF_TOKEN"))
+        .baseUrl("https://my-endpoint.endpoints.huggingface.cloud/v1")
+        .model("any-model-id")
+        .build();
+```
+
+### Not supported
+
+- The legacy `https://api-inference.huggingface.co/models/{id}` text-generation API — HF is steering users to the router.
+- Image generation, embeddings, speech — HF supports these via their Python/JS Inference Clients but not via the OpenAI-compatible endpoint.
+
 ## Switching providers
 
 Because every provider returns the same `Model` and goes through the same `Client` / `ModelResponse` API, switching providers is almost always a one-line change:
