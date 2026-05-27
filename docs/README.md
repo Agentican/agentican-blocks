@@ -39,18 +39,15 @@ Reference:
 
 ```java
 // One-shot call
-var client = Client.builder()
+var chat = Chat.builder()
         .model(m -> m.anthropic()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .model("claude-opus-4-7"))
+        .systemPrompt("You are a helpful assistant.")
         .build();
 
-var response = client.send(ModelRequest.builder()
-        .systemPrompt("You are a helpful assistant.")
-        .userMessage("Summarize the second law of thermodynamics in one sentence.")
-        .build());
-
-System.out.println(response.text());
+String answer = chat.send("Summarize the second law of thermodynamics in one sentence.");
+System.out.println(answer);
 ```
 
 ```java
