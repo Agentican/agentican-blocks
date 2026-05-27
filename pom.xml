@@ -3,15 +3,14 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>ai.agentican</groupId>
-        <artifactId>agentican</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-    </parent>
 
+    <groupId>ai.agentican</groupId>
     <artifactId>agentican-blocks</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
     <name>Agentican Blocks</name>
-    <description>Small Java library for calling LLM providers (OpenAI, Anthropic, Gemini, Bedrock, OpenAI-compatible).</description>
+    <description>Small Java library for calling LLM providers (OpenAI, Anthropic, Gemini, Bedrock, Cohere, Hugging Face, OpenAI-compatible).</description>
 
     <properties>
         <maven.compiler.source>25</maven.compiler.source>
@@ -23,10 +22,8 @@
         <openai.version>4.32.0</openai.version>
         <genai.version>1.51.0</genai.version>
         <aws.sdk.version>2.42.36</aws.sdk.version>
+        <cohere.version>1.9.3</cohere.version>
         <junit.version>5.11.4</junit.version>
-        <!-- Root pom's surefire plugin uses '@{argLine}' for late-binding (jacoco etc).
-             We don't set argLine anywhere; this property gives surefire an empty string to substitute. -->
-        <argLine></argLine>
     </properties>
 
     <dependencies>
@@ -75,6 +72,12 @@
             <version>${aws.sdk.version}</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>com.cohere</groupId>
+            <artifactId>cohere-java</artifactId>
+            <version>${cohere.version}</version>
+            <optional>true</optional>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -94,6 +97,7 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
                 <configuration>
                     <release>25</release>
                     <parameters>true</parameters>
@@ -101,15 +105,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <!-- Override parent's @{argLine} placeholder (we don't use jacoco-style late binding). -->
-                    <argLine></argLine>
-                    <!-- Parent pom sets java.util.logging.manager to jboss-logmanager for Quarkus modules.
-                         This module is plain Java and doesn't depend on jboss-logmanager; use the JDK default. -->
-                    <systemPropertyVariables>
-                        <java.util.logging.manager>java.util.logging.LogManager</java.util.logging.manager>
-                    </systemPropertyVariables>
-                </configuration>
+                <version>3.5.4</version>
             </plugin>
         </plugins>
     </build>

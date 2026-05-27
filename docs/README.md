@@ -2,7 +2,7 @@
 
 A small Java library for calling large-language-model providers behind a single uniform API, plus building blocks for agents (tool use, multi-turn loops, structured output).
 
-`agentican-blocks` wraps six providers — **Anthropic**, **OpenAI**, **Google Gemini**, **AWS Bedrock**, **Hugging Face** (Inference Providers Router with partner routing), and **OpenAI-compatible** endpoints (Groq, SambaNova, Together, Fireworks, and friends) — behind one `Client` / `ModelResponse` API, so switching providers is a one-line builder change instead of a code rewrite.
+`agentican-blocks` wraps seven providers — **Anthropic**, **OpenAI**, **Google Gemini**, **AWS Bedrock**, **Hugging Face** (Inference Providers Router with partner routing), **Cohere** (native SDK), and **OpenAI-compatible** endpoints (Groq, SambaNova, Together, Fireworks, and friends) — behind one `Client` / `ModelResponse` API, so switching providers is a one-line builder change instead of a code rewrite.
 
 It also ships a minimal but production-shaped ReAct agent loop and an `Agent` interface that you can extend with other loop styles.
 

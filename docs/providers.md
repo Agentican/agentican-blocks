@@ -213,6 +213,51 @@ var provider = Model.builder().huggingFace()
 - The legacy `https://api-inference.huggingface.co/models/{id}` text-generation API — HF is steering users to the router.
 - Image generation, embeddings, speech — HF supports these via their Python/JS Inference Clients but not via the OpenAI-compatible endpoint.
 
+## Cohere
+
+Native integration via Cohere's official Java SDK (`com.cohere:cohere-java`). Talks to Cohere's v2 chat API (`https://api.cohere.com/v2/chat`) directly — full access to Cohere's request/response shape, not limited to the OpenAI-compatibility layer.
+
+```java
+var provider = Model.builder().cohere()
+        .apiKey(System.getenv("COHERE_API_KEY"))
+        .model("command-a-plus-05-2026")
+        .build();
+```
+
+| Method | Purpose |
+|---|---|
+| `.apiKey(String)` | Cohere API key (or set `CO_API_KEY` env var; the SDK reads it automatically) |
+| `.model(String)` | Cohere model id, e.g. `"command-a-plus-05-2026"` |
+
+### Pull in the dependency
+
+The Cohere SDK is marked `<optional>true</optional>` in `agentican-blocks`'s POM, like the other vendor SDKs. Add it to your own project to enable Cohere:
+
+```xml
+<dependency>
+    <groupId>com.cohere</groupId>
+    <artifactId>cohere-java</artifactId>
+</dependency>
+```
+
+### Mapping
+
+- **System prompt** → Cohere `system` message.
+- **User text** → Cohere `user` message.
+- **Tool calls in assistant turns** → Cohere `tool_calls` on assistant message.
+- **Tool results** → Cohere `tool` role messages (each `ToolResultMessageBlock` becomes one Cohere tool message, indexed by `tool_call_id`).
+- **`outputType`** → Cohere `response_format: json_object` with JSON schema generated from the Class.
+- **Finish reason** → `COMPLETE`/`STOP_SEQUENCE` → `END_TURN`, `TOOL_CALL` → `TOOL_USE`, `MAX_TOKENS` → `MAX_TOKENS`, `ERROR`/`TIMEOUT` → `END_TURN` (with warning log).
+
+### Not yet exposed
+
+- `documents` field for grounded RAG
+- `connectors` for external retrieval
+- Inline citations on assistant responses
+- `safetyMode`, `k`, `p`, `frequencyPenalty`, `presencePenalty`, `stopSequences`, `seed`, `logprobs`, `thinking`
+
+These are Cohere-native parameters that exist on the SDK's `V2ChatRequest` but aren't surfaced through the builder yet. Add them on demand.
+
 ## Switching providers
 
 Because every provider returns the same `Model` and goes through the same `Client` / `ModelResponse` API, switching providers is almost always a one-line change:

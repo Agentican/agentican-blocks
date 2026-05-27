@@ -3,6 +3,7 @@ package ai.agentican.blocks.llm.api;
 import ai.agentican.blocks.llm.impl.ModelMessage;
 import ai.agentican.blocks.llm.provider.Anthropic;
 import ai.agentican.blocks.llm.provider.Bedrock;
+import ai.agentican.blocks.llm.provider.Cohere;
 import ai.agentican.blocks.llm.provider.Gemini;
 import ai.agentican.blocks.llm.provider.HuggingFace;
 import ai.agentican.blocks.llm.provider.OpenAi;
@@ -30,6 +31,7 @@ public interface Model {
         public Gemini.Builder gemini() { return Gemini.builder(); }
         public Bedrock.Builder bedrock() { return Bedrock.builder(); }
         public HuggingFace.Builder huggingFace() { return HuggingFace.builder(); }
+        public Cohere.Builder cohere() { return Cohere.builder(); }
 
         public OpenAiCompatible.Builder sambanova() { return OpenAiCompatible.builder().baseUrl(OpenAiCompatible.SAMBANOVA_BASE_URL); }
         public OpenAiCompatible.Builder together() { return OpenAiCompatible.builder().baseUrl(OpenAiCompatible.TOGETHER_BASE_URL); }
