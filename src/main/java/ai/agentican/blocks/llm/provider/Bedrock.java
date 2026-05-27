@@ -37,7 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Bedrock implements Provider {
+public class Bedrock implements Model {
 
     private static final Logger LOG = LoggerFactory.getLogger(Bedrock.class);
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -92,8 +92,6 @@ public class Bedrock implements Provider {
                 ? systemPrompt
                 : appendSchemaInstructions(systemPrompt, outputType);
 
-        var systemBlock = SystemContentBlock.builder().text(effectiveSystemPrompt).build();
-
         var translated = translateMessages(messages);
 
         var inferenceBuilder = InferenceConfiguration.builder().maxTokens((int) Math.min(maxTokens, Integer.MAX_VALUE));
@@ -103,9 +101,11 @@ public class Bedrock implements Provider {
 
         var converseBuilder = ConverseRequest.builder()
                 .modelId(modelName)
-                .system(systemBlock)
                 .messages(translated)
                 .inferenceConfig(inferenceBuilder.build());
+
+        if (Utils.isFound(effectiveSystemPrompt))
+            converseBuilder.system(SystemContentBlock.builder().text(effectiveSystemPrompt).build());
 
         if (tools != null && !tools.isEmpty()) {
 
@@ -151,8 +151,10 @@ public class Bedrock implements Provider {
             throw new RuntimeException("Failed to render schema for " + outputType.getSimpleName(), e);
         }
 
-        return systemPrompt
-                + "\n\nRespond with a single JSON object matching this schema. No prose, no markdown fences:\n"
+        var prefix = Utils.isFound(systemPrompt) ? systemPrompt + "\n\n" : "";
+
+        return prefix
+                + "Respond with a single JSON object matching this schema. No prose, no markdown fences:\n"
                 + schemaJson;
     }
 
@@ -335,7 +337,7 @@ public class Bedrock implements Provider {
 
     public static Builder builder() { return new Builder(); }
 
-    public static final class Builder implements ProviderBuilder<Builder> {
+    public static final class Builder implements ModelBuilder<Builder> {
 
         private String accessKeyId;
         private String secretAccessKey;
@@ -351,7 +353,7 @@ public class Bedrock implements Provider {
         @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
         @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
-        @Override public Provider build() {
+        @Override public Model build() {
             return new Bedrock(accessKeyId, secretAccessKey, region, modelName, maxTokens, temperature);
         }
     }

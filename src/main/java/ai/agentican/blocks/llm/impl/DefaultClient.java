@@ -1,11 +1,11 @@
 package ai.agentican.blocks.llm.impl;
 
+import ai.agentican.blocks.llm.api.Client;
 import ai.agentican.blocks.llm.api.Model;
 import ai.agentican.blocks.llm.api.ModelRequest;
 import ai.agentican.blocks.llm.api.ModelResponse;
-import ai.agentican.blocks.llm.api.ModelSession;
+import ai.agentican.blocks.llm.api.Chat;
 import ai.agentican.blocks.llm.api.ToolDefinition;
-import ai.agentican.blocks.llm.api.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +17,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
-public final class ModelFactory implements Model {
+public final class DefaultClient implements Client {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ModelFactory.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultClient.class);
 
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final int DEFAULT_JITTER_MS = 500;
@@ -27,22 +27,28 @@ public final class ModelFactory implements Model {
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(30);
     private static final Duration DEFAULT_BASE_DELAY = Duration.ofSeconds(1);
 
-    private final Provider impl;
+    private final Model model;
     private final int maxRetries;
     private final Duration baseDelay;
 
-    public ModelFactory(Provider impl) {
+    public DefaultClient(Model model) {
 
-        this(impl, DEFAULT_MAX_RETRIES, DEFAULT_BASE_DELAY);
+        this(model, DEFAULT_MAX_RETRIES, DEFAULT_BASE_DELAY);
     }
 
-    public ModelFactory(Provider model, int maxRetries, Duration baseDelay) {
+    public DefaultClient(Model model, int maxRetries, Duration baseDelay) {
 
         if (model == null) throw new IllegalArgumentException("Model required");
 
-        this.impl = model;
+        this.model = model;
         this.maxRetries = maxRetries > 0 ? maxRetries : DEFAULT_MAX_RETRIES;
         this.baseDelay = baseDelay != null ? baseDelay : DEFAULT_BASE_DELAY;
+    }
+
+    @Override
+    public Model model() {
+
+        return model;
     }
 
     @Override
@@ -57,13 +63,13 @@ public final class ModelFactory implements Model {
     public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
                                       List<ToolDefinition> tools, Class<T> outputType) {
 
-        return retry(() -> impl.send(systemPrompt, messages, tools, outputType));
+        return retry(() -> model.send(systemPrompt, messages, tools, outputType));
     }
 
     @Override
-    public ModelSession session(String systemPrompt, List<ToolDefinition> tools) {
+    public Chat chat(String systemPrompt, List<ToolDefinition> tools) {
 
-        return new DefaultModelSession(this, systemPrompt, tools);
+        return new DefaultChat(this, systemPrompt, tools);
     }
 
     private <R> R retry(Supplier<R> call) {
@@ -137,5 +143,4 @@ public final class ModelFactory implements Model {
 
         return new RuntimeException(e);
     }
-
 }

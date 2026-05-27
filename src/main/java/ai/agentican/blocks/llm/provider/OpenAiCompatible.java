@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAiCompatible implements Provider {
+public class OpenAiCompatible implements Model {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenAiCompatible.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -74,8 +74,10 @@ public class OpenAiCompatible implements Provider {
 
         var paramsBuilder = ChatCompletionCreateParams.builder()
                 .model(modelName)
-                .maxCompletionTokens(maxTokens)
-                .addMessage(ChatCompletionSystemMessageParam.builder().content(systemPrompt).build());
+                .maxCompletionTokens(maxTokens);
+
+        if (Utils.isFound(systemPrompt))
+            paramsBuilder.addMessage(ChatCompletionSystemMessageParam.builder().content(systemPrompt).build());
 
         translateMessages(messages).forEach(paramsBuilder::addMessage);
 
@@ -296,7 +298,7 @@ public class OpenAiCompatible implements Provider {
 
     public static Builder builder() { return new Builder(); }
 
-    public static final class Builder implements ProviderBuilder<Builder> {
+    public static final class Builder implements ModelBuilder<Builder> {
 
         private String apiKey;
         private String baseUrl;
@@ -310,7 +312,7 @@ public class OpenAiCompatible implements Provider {
         @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
         @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
-        @Override public Provider build() {
+        @Override public Model build() {
             return new OpenAiCompatible(apiKey, baseUrl, modelName, maxTokens, temperature);
         }
     }

@@ -3,13 +3,13 @@ package ai.agentican.blocks.llm.provider;
 import ai.agentican.blocks.llm.*;
 
 import ai.agentican.blocks.llm.api.*;
+import ai.agentican.blocks.llm.api.Model;
 import ai.agentican.blocks.llm.api.StopReason;
 import ai.agentican.blocks.llm.impl.*;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.core.JsonValue;
 import com.anthropic.models.messages.*;
-import com.anthropic.models.messages.Model;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class Anthropic implements Provider {
+public class Anthropic implements Model {
 
     private static final CacheControlEphemeral CACHE_CONTROL = CacheControlEphemeral.builder().build();
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -50,18 +50,22 @@ public class Anthropic implements Provider {
     public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
                                      List<ToolDefinition> tools, Class<T> outputType) {
 
-        var systemPromptBlock = TextBlockParam.builder()
-                .text(systemPrompt)
-                .cacheControl(CACHE_CONTROL)
-                .build();
-
         var translated = messageParams(messages);
 
         var messageBuilder = MessageCreateParams.builder()
-                .model(Model.of(modelName))
+                .model(com.anthropic.models.messages.Model.of(modelName))
                 .maxTokens(maxTokens)
-                .systemOfTextBlockParams(List.of(systemPromptBlock))
                 .messages(translated);
+
+        if (Utils.isFound(systemPrompt)) {
+
+            var systemPromptBlock = TextBlockParam.builder()
+                    .text(systemPrompt)
+                    .cacheControl(CACHE_CONTROL)
+                    .build();
+
+            messageBuilder.systemOfTextBlockParams(List.of(systemPromptBlock));
+        }
 
         if (temperature != null) messageBuilder.temperature(temperature);
 
@@ -235,7 +239,7 @@ public class Anthropic implements Provider {
 
     public static Builder builder() { return new Builder(); }
 
-    public static final class Builder implements ProviderBuilder<Builder> {
+    public static final class Builder implements ModelBuilder<Builder> {
 
         private String apiKey;
         private String modelName;
@@ -247,7 +251,7 @@ public class Anthropic implements Provider {
         @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
         @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
-        @Override public Provider build() {
+        @Override public Model build() {
             return new Anthropic(apiKey, modelName, maxTokens, temperature);
         }
     }

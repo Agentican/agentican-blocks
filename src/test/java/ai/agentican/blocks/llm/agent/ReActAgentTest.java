@@ -38,7 +38,7 @@ class ReActAgentTest {
                 .tool(echoTool())
                 .build();
 
-        var result = loop.run("say hello via echo");
+        var result = loop.respond("say hello via echo");
 
         assertEquals("done: hello", result.text());
         assertEquals(StopReason.END_TURN, result.stopReason());
@@ -74,7 +74,7 @@ class ReActAgentTest {
                 .tool(echoTool())
                 .build();
 
-        var result = loop.run("call echo twice");
+        var result = loop.respond("call echo twice");
 
         assertEquals("got both", result.text());
         assertEquals(StopReason.END_TURN, result.stopReason());
@@ -115,7 +115,7 @@ class ReActAgentTest {
                 .tool(boom)
                 .build();
 
-        var result = loop.run("trigger boom");
+        var result = loop.respond("trigger boom");
 
         assertEquals("recovered", result.text());
 
@@ -138,7 +138,7 @@ class ReActAgentTest {
                 .tool(echoTool())
                 .build();
 
-        var result = loop.run("call ghost");
+        var result = loop.respond("call ghost");
 
         var block = assertInstanceOf(ToolResultMessageBlock.class,
                 result.messages().get(2).messageBlocks().get(0));
@@ -160,7 +160,7 @@ class ReActAgentTest {
                 .maxTurns(3)
                 .build();
 
-        var result = loop.run("loop forever");
+        var result = loop.respond("loop forever");
 
         assertEquals(StopReason.MAX_TURNS, result.stopReason());
         assertEquals(3, result.turns());
@@ -172,13 +172,6 @@ class ReActAgentTest {
 
         assertThrows(IllegalStateException.class, () ->
                 ReActAgent.builder().systemPrompt(SYS).build());
-    }
-
-    @Test
-    void builderValidation_blankSystemPrompt() {
-
-        assertThrows(IllegalStateException.class, () ->
-                ReActAgent.builder().model(new FakeModel(List.of())).systemPrompt("  ").build());
     }
 
     @Test
@@ -255,16 +248,6 @@ class ReActAgentTest {
 
             return (ModelResponse<T>) scripted.removeFirst();
         }
-
-        @Override
-        public <T> ModelResponse<T> send(ModelRequest<T> request) {
-            throw new UnsupportedOperationException("not used by ReActLoop");
-        }
-
-        @Override
-        public ModelSession session(String systemPrompt, List<ToolDefinition> tools) {
-            throw new UnsupportedOperationException("not used by ReActLoop");
-        }
     }
 
     /** Always returns one tool call so the loop is forced to hit maxTurns. */
@@ -284,16 +267,6 @@ class ReActAgentTest {
                     StopReason.TOOL_USE, ModelUsage.ZERO);
 
             return (ModelResponse<T>) response;
-        }
-
-        @Override
-        public <T> ModelResponse<T> send(ModelRequest<T> request) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public ModelSession session(String systemPrompt, List<ToolDefinition> tools) {
-            throw new UnsupportedOperationException();
         }
     }
 }

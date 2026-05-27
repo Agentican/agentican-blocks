@@ -1,6 +1,6 @@
 package ai.agentican.blocks.llm.api;
 
-public interface ProviderBuilder<B extends ProviderBuilder<B>> {
+public interface ModelBuilder<B extends ModelBuilder<B>> {
 
     B model(String model);
 
@@ -8,5 +8,5 @@ public interface ProviderBuilder<B extends ProviderBuilder<B>> {
 
     B temperature(Double temperature);
 
-    Provider build();
+    Model build();
 }

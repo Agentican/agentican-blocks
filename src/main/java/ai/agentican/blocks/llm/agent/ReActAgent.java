@@ -2,6 +2,7 @@ package ai.agentican.blocks.llm.agent;
 
 import ai.agentican.blocks.llm.Utils;
 import ai.agentican.blocks.llm.api.*;
+import ai.agentican.blocks.llm.impl.DefaultClient;
 import ai.agentican.blocks.llm.impl.MessageBlock;
 import ai.agentican.blocks.llm.impl.MessageRole;
 import ai.agentican.blocks.llm.impl.ModelMessage;
@@ -17,23 +18,24 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
-public final class ReActAgent {
+public final class ReActAgent implements Agent {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReActAgent.class);
 
     private static final int DEFAULT_MAX_TURNS = 10;
 
-    private final Model model;
+    private final Client client;
     private final String systemPrompt;
     private final Map<String, Tool> tools;
     private final int maxTurns;
 
     private final List<ToolDefinition> toolDefinitions;
 
-    private ReActAgent(Model model, String systemPrompt, Map<String, Tool> tools, int maxTurns) {
+    private ReActAgent(Client client, String systemPrompt, Map<String, Tool> tools, int maxTurns) {
 
-        this.model = model;
+        this.client = client;
         this.systemPrompt = systemPrompt;
         this.tools = Map.copyOf(tools);
         this.maxTurns = maxTurns;
@@ -41,10 +43,33 @@ public final class ReActAgent {
         this.toolDefinitions = tools.values().stream().map(Tool::definition).toList();
     }
 
-    public LoopResponse<Void> run(String task) {
+    @Override
+    public String perform(String task) {
+
+        var response = respond(task, Void.class);
+
+        return response.text() != null ? response.text() : "";
+    }
+
+    @Override
+    public <T> T perform(String task, Class<T> outputType) {
+
+        return respond(task, outputType).output();
+    }
+
+    @Override
+    public LoopResponse<Void> respond(String task) {
+
+        return respond(task, Void.class);
+    }
+
+    @Override
+    public <T> LoopResponse<T> respond(String task, Class<T> outputType) {
 
         if (Utils.isMissing(task))
             throw new IllegalArgumentException("User task required");
+
+        if (outputType == null) throw new IllegalArgumentException("Output type required");
 
         var messageHistory = new ArrayList<ModelMessage>();
 
@@ -58,7 +83,7 @@ public final class ReActAgent {
 
         for (int turn = 0; turn < maxTurns; turn++) {
 
-            var modelResponse = model.send(systemPrompt, messageHistory, toolDefinitions, Void.class);
+            var modelResponse = client.send(systemPrompt, messageHistory, toolDefinitions, outputType);
 
             var responseText = modelResponse.text();
             var stopReason = modelResponse.stopReason();
@@ -72,7 +97,8 @@ public final class ReActAgent {
             messageHistory.add(assistantMessage);
 
             if (stopReason != StopReason.TOOL_USE || modelResponse.toolCalls().isEmpty())
-                return LoopResponse.<Void>builder()
+                return LoopResponse.<T>builder()
+                        .output(modelResponse.output())
                         .text(responseText)
                         .stopReason(stopReason)
                         .usage(modelUsage)
@@ -96,7 +122,7 @@ public final class ReActAgent {
 
         var responseText = lastAssistantText(messageHistory);
 
-        return LoopResponse.<Void>builder()
+        return LoopResponse.<T>builder()
                 .text(responseText)
                 .stopReason(StopReason.MAX_TURNS)
                 .usage(modelUsage)
@@ -136,11 +162,11 @@ public final class ReActAgent {
                     .content(toolResult)
                     .build();
         }
-        catch (Exception e) {
+        catch (Exception ex) {
 
-            LOG.warn("Tool {} failed: {}", toolCall.name(), e.getMessage());
+            LOG.warn("Tool {} failed: {}", toolCall.name(), ex.getMessage());
 
-            var errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            var errorMessage = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
 
             return ToolResultMessageBlock.builder()
                     .toolUseId(toolCallId)
@@ -150,7 +176,7 @@ public final class ReActAgent {
         }
     }
 
-    private static ModelMessage toAssistantMessage(ModelResponse<Void> modelResponse) {
+    private static ModelMessage toAssistantMessage(ModelResponse<?> modelResponse) {
 
         var blocks = new ArrayList<MessageBlock>();
 
@@ -203,13 +229,26 @@ public final class ReActAgent {
 
         private final List<Tool> tools = new ArrayList<>();
 
+        private Client client;
         private Model model;
         private String systemPrompt;
         private int maxTurns = DEFAULT_MAX_TURNS;
 
         private Builder() {}
 
+        public Builder client(Client client) { this.client = client; return this; }
+
         public Builder model(Model model) { this.model = model; return this; }
+
+        public Builder model(Function<Model.Builder, ModelBuilder<?>> config) {
+
+            if (config == null) throw new IllegalArgumentException("Model config required");
+
+            this.model = config.apply(Model.builder()).build();
+
+            return this;
+        }
+
         public Builder systemPrompt(String prompt) { this.systemPrompt = prompt; return this; }
         public Builder maxTurns(int maxTurns) { this.maxTurns = maxTurns; return this; }
 
@@ -233,9 +272,16 @@ public final class ReActAgent {
 
         public ReActAgent build() {
 
-            if (model == null) throw new IllegalStateException("Model required");
-            if (Utils.isMissing(systemPrompt)) throw new IllegalStateException("System prompt required");
             if (maxTurns <= 0) throw new IllegalStateException("maxTurns must be > 0");
+
+            Client resolved = client;
+
+            if (resolved == null) {
+
+                if (model == null) throw new IllegalStateException("Client or Model required");
+
+                resolved = new DefaultClient(model);
+            }
 
             var byName = new HashMap<String, Tool>();
             var seen = new HashSet<String>();
@@ -250,7 +296,7 @@ public final class ReActAgent {
                 byName.put(name, tool);
             }
 
-            return new ReActAgent(model, systemPrompt, byName, maxTurns);
+            return new ReActAgent(resolved, systemPrompt, byName, maxTurns);
         }
     }
 }

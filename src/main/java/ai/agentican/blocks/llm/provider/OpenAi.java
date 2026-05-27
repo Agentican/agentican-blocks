@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OpenAi implements Provider {
+public class OpenAi implements Model {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenAi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -98,9 +98,11 @@ public class OpenAi implements Provider {
 
         var paramsBuilder = ResponseCreateParams.builder()
                 .model(modelName)
-                .instructions(systemPrompt)
                 .maxOutputTokens(maxTokens)
                 .inputOfResponse(translateMessages(messages));
+
+        if (Utils.isFound(systemPrompt))
+            paramsBuilder.instructions(systemPrompt);
 
         if (temperature != null) paramsBuilder.temperature(temperature);
 
@@ -352,7 +354,7 @@ public class OpenAi implements Provider {
 
     public static Builder builder() { return new Builder(); }
 
-    public static final class Builder implements ProviderBuilder<Builder> {
+    public static final class Builder implements ModelBuilder<Builder> {
 
         private String apiKey;
         private String provider = OPENAI;
@@ -366,7 +368,7 @@ public class OpenAi implements Provider {
         @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
         @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
-        @Override public Provider build() {
+        @Override public Model build() {
             return new OpenAi(apiKey, provider, modelName, maxTokens, temperature);
         }
     }

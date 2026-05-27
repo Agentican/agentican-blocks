@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class Gemini implements Provider {
+public class Gemini implements Model {
 
     private static final Logger LOG = LoggerFactory.getLogger(Gemini.class);
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -59,8 +59,6 @@ public class Gemini implements Provider {
     public <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
                                      List<ToolDefinition> tools, Class<T> outputType) {
 
-        var systemContent = Content.fromParts(Part.fromText(systemPrompt));
-
         var allTools = new ArrayList<Tool>();
 
         if (tools != null && !tools.isEmpty()) {
@@ -88,9 +86,11 @@ public class Gemini implements Provider {
         allTools.add(Tool.builder().googleSearch(GoogleSearch.builder().build()).build());
 
         var configBuilder = GenerateContentConfig.builder()
-                .systemInstruction(systemContent)
                 .maxOutputTokens((int) Math.min(maxTokens, Integer.MAX_VALUE))
                 .tools(allTools);
+
+        if (Utils.isFound(systemPrompt))
+            configBuilder.systemInstruction(Content.fromParts(Part.fromText(systemPrompt)));
 
         if (temperature != null) configBuilder.temperature(temperature.floatValue());
 
@@ -237,7 +237,7 @@ public class Gemini implements Provider {
 
     public static Builder builder() { return new Builder(); }
 
-    public static final class Builder implements ProviderBuilder<Builder> {
+    public static final class Builder implements ModelBuilder<Builder> {
 
         private String apiKey;
         private String modelName;
@@ -249,7 +249,7 @@ public class Gemini implements Provider {
         @Override public Builder maxTokens(long n) { this.maxTokens = n; return this; }
         @Override public Builder temperature(Double t) { this.temperature = t; return this; }
 
-        @Override public Provider build() {
+        @Override public Model build() {
             return new Gemini(apiKey, modelName, maxTokens, temperature);
         }
     }
