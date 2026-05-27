@@ -16,8 +16,6 @@ public interface Client {
     <T> ModelResponse<T> send(String systemPrompt, List<ModelMessage> messages,
                               List<ToolDefinition> tools, Class<T> outputType);
 
-    Chat chat(String systemPrompt, List<ToolDefinition> tools);
-
     static Builder builder() { return new Builder(); }
 
     final class Builder {

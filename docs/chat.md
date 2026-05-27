@@ -26,12 +26,6 @@ var chat = Chat.builder()
         .build();
 ```
 
-Or spawn a `Chat` from an existing `Client`:
-
-```java
-Chat chat = client.chat("You are helpful.", List.of());
-```
-
 ## Sending messages
 
 ```java

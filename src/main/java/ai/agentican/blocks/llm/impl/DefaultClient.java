@@ -4,7 +4,6 @@ import ai.agentican.blocks.llm.api.Client;
 import ai.agentican.blocks.llm.api.Model;
 import ai.agentican.blocks.llm.api.ModelRequest;
 import ai.agentican.blocks.llm.api.ModelResponse;
-import ai.agentican.blocks.llm.api.Chat;
 import ai.agentican.blocks.llm.api.ToolDefinition;
 
 import org.slf4j.Logger;
@@ -64,12 +63,6 @@ public final class DefaultClient implements Client {
                                       List<ToolDefinition> tools, Class<T> outputType) {
 
         return retry(() -> model.send(systemPrompt, messages, tools, outputType));
-    }
-
-    @Override
-    public Chat chat(String systemPrompt, List<ToolDefinition> tools) {
-
-        return new DefaultChat(this, systemPrompt, tools);
     }
 
     private <R> R retry(Supplier<R> call) {
