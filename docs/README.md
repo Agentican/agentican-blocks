@@ -47,19 +47,23 @@ var chat = Chat.builder()
         .build();
 
 String answer = chat.send("Summarize the second law of thermodynamics in one sentence.");
+
 System.out.println(answer);
 ```
 
 ```java
 // ReAct agent with a tool
 var weather = new Tool() {
+    
     @Override public ToolDefinition definition() {
+        
         return new ToolDefinition(
                 "get_weather",
                 "Get current weather for a city.",
                 Map.of("city", Map.of("type", "string")),
                 List.of("city"));
     }
+    
     @Override public String execute(Map<String, Object> args) {
         return "{\"city\":\"" + args.get("city") + "\",\"tempF\":72}";
     }
@@ -72,6 +76,7 @@ var agent = Agent.builder().reAct()
         .build();
 
 String result = agent.perform("What's the weather in Tokyo?");
+
 System.out.println(result);
 ```
 
