@@ -23,6 +23,7 @@
         <genai.version>1.51.0</genai.version>
         <aws.sdk.version>2.42.36</aws.sdk.version>
         <cohere.version>1.9.3</cohere.version>
+        <qute.version>3.23.0</qute.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
@@ -46,6 +47,11 @@
             <groupId>com.github.victools</groupId>
             <artifactId>jsonschema-module-jackson</artifactId>
             <version>4.38.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus.qute</groupId>
+            <artifactId>qute-core</artifactId>
+            <version>${qute.version}</version>
         </dependency>
 
         <dependency>
@@ -80,15 +86,16 @@
         </dependency>
 
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-nop</artifactId>
-            <version>${slf4j.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -106,6 +113,56 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.4</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <org.slf4j.simpleLogger.defaultLogLevel>off</org.slf4j.simpleLogger.defaultLogLevel>
+                        <org.slf4j.simpleLogger.log.ai.agentican.blocks>off</org.slf4j.simpleLogger.log.ai.agentican.blocks>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>add-examples-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/examples/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-examples-resources</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>add-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>src/examples/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <excludes>
+                        <exclude>ai/agentican/blocks/examples/**</exclude>
+                        <exclude>keys.properties</exclude>
+                        <exclude>simplelogger.properties</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
         </plugins>
     </build>

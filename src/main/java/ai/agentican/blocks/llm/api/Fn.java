@@ -6,44 +6,48 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-public interface Fn<T> {
+public interface Fn<I, O> {
 
-    T run(String userMessage);
+    O run(I input);
 
-    ModelResponse<T> respond(String userMessage);
+    ModelResponse<O> respond(I input);
 
-    static <T> Builder<T> builder(Class<T> outputType) {
+    static <I, O> Builder<I, O> builder(Class<I> inputType, Class<O> outputType) {
 
+        if (inputType == null) throw new IllegalArgumentException("Input type required");
         if (outputType == null) throw new IllegalArgumentException("Output type required");
 
-        return new Builder<>(outputType);
+        return new Builder<>(inputType, outputType);
     }
 
-    final class Builder<T> {
+    final class Builder<I, O> {
 
-        private final Class<T> outputType;
+        private final Class<I> inputType;
+        private final Class<O> outputType;
         private final List<ToolDefinition> tools = new ArrayList<>();
 
         private Client client;
         private Model model;
         private Function<Model.Builder, ModelBuilder<?>> modelConfig;
         private String systemPrompt;
+        private String userPrompt;
 
-        Builder(Class<T> outputType) {
+        Builder(Class<I> inputType, Class<O> outputType) {
+            this.inputType = inputType;
             this.outputType = outputType;
         }
 
-        public Builder<T> client(Client client) {
+        public Builder<I, O> client(Client client) {
             this.client = client;
             return this;
         }
 
-        public Builder<T> model(Model model) {
+        public Builder<I, O> model(Model model) {
             this.model = model;
             return this;
         }
 
-        public Builder<T> model(Function<Model.Builder, ModelBuilder<?>> config) {
+        public Builder<I, O> model(Function<Model.Builder, ModelBuilder<?>> config) {
 
             if (config == null) throw new IllegalArgumentException("Model config required");
 
@@ -51,12 +55,17 @@ public interface Fn<T> {
             return this;
         }
 
-        public Builder<T> systemPrompt(String systemPrompt) {
+        public Builder<I, O> systemPrompt(String systemPrompt) {
             this.systemPrompt = systemPrompt;
             return this;
         }
 
-        public Builder<T> tool(ToolDefinition tool) {
+        public Builder<I, O> userPrompt(String userPrompt) {
+            this.userPrompt = userPrompt;
+            return this;
+        }
+
+        public Builder<I, O> tool(ToolDefinition tool) {
 
             if (tool == null) throw new IllegalArgumentException("Tool required");
 
@@ -64,7 +73,7 @@ public interface Fn<T> {
             return this;
         }
 
-        public Builder<T> tools(List<ToolDefinition> tools) {
+        public Builder<I, O> tools(List<ToolDefinition> tools) {
 
             if (tools == null) throw new IllegalArgumentException("Tools list required");
 
@@ -72,7 +81,10 @@ public interface Fn<T> {
             return this;
         }
 
-        public Fn<T> build() {
+        public Fn<I, O> build() {
+
+            if (userPrompt == null && inputType != String.class)
+                throw new IllegalStateException("userPrompt required when input type is not String");
 
             Client resolved = client;
 
@@ -89,7 +101,7 @@ public interface Fn<T> {
                 resolved = Client.builder().model(resolvedModel).build();
             }
 
-            return new DefaultFn<>(resolved, systemPrompt, tools, outputType);
+            return new DefaultFn<>(resolved, systemPrompt, userPrompt, tools, inputType, outputType);
         }
     }
 }

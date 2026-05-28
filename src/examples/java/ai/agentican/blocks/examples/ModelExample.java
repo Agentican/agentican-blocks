@@ -12,15 +12,7 @@ public final class ModelExample {
 
     static void main(String[] args) {
 
-        var apiKey = System.getenv("ANTHROPIC_API_KEY");
-
-        if (apiKey == null || apiKey.isBlank()) {
-
-            System.err.println("Set ANTHROPIC_API_KEY in the environment to run this example.");
-            System.exit(1);
-        }
-
-        var model = Model.builder().anthropic().apiKey(apiKey).model("claude-opus-4-7").build();
+        var model = Model.builder().anthropic().apiKey(Keys.require("ANTHROPIC_API_KEY")).model("claude-opus-4-7").build();
 
         var messages = List.of(ModelMessage.user(TextMessageBlock.of("Explain entropy in one sentence.")));
 

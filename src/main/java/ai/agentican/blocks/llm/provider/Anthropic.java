@@ -13,6 +13,8 @@ import com.anthropic.models.messages.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +22,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Anthropic implements Model {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Anthropic.class);
 
     private static final CacheControlEphemeral CACHE_CONTROL = CacheControlEphemeral.builder().build();
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -95,7 +99,11 @@ public class Anthropic implements Model {
         messageBuilder.addTool(WebSearchTool20250305.builder().build());
         messageBuilder.addTool(WebFetchTool20250910.builder().cacheControl(CACHE_CONTROL).build());
 
+        LOG.debug("LLM: sending request");
+
         var response = client.messages().create(messageBuilder.build());
+
+        LOG.debug("LLM: received response");
 
         var responseText = response.content().stream()
                 .flatMap(block -> block.text().stream())

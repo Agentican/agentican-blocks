@@ -4,13 +4,35 @@ import ai.agentican.blocks.llm.agent.ReActAgent;
 
 public interface Agent {
 
-    String perform(String task);
+    default String perform(String task) {
+        return respond(task).output();
+    }
 
-    <T> T perform(String task, Class<T> outputType);
+    default String perform(String task, Object input) {
+        return respond(task, input).output();
+    }
 
-    LoopResponse<Void> respond(String task);
+    default <T> T perform(String task, Class<T> outputType) {
+        return respond(task, outputType).output();
+    }
 
-    <T> LoopResponse<T> respond(String task, Class<T> outputType);
+    default <T> T perform(String task, Object input, Class<T> outputType) {
+        return respond(task, input, outputType).output();
+    }
+
+    default LoopResponse<String> respond(String task) {
+        return respond(task, null, String.class);
+    }
+
+    default LoopResponse<String> respond(String task, Object input) {
+        return respond(task, input, String.class);
+    }
+
+    default <T> LoopResponse<T> respond(String task, Class<T> outputType) {
+        return respond(task, null, outputType);
+    }
+
+    <T> LoopResponse<T> respond(String task, Object input, Class<T> outputType);
 
     static Builder builder() { return new Builder(); }
 

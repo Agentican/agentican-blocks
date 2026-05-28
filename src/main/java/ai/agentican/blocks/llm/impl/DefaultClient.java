@@ -71,20 +71,37 @@ public final class DefaultClient implements Client {
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
 
+            LOG.debug("LLM request, attempt {}/{}", attempt + 1, maxRetries + 1);
+
             try {
 
                 return call.get();
             }
-            catch (Exception e) {
+            catch (Exception ex) {
 
-                lastException = e;
+                LOG.warn("LLM request, attempt {}/{}: failed ({})",
+                        attempt + 1, maxRetries + 1, ex.getMessage());
 
-                if (attempt >= maxRetries || !isRetryable(e)) throw wrapException(e);
+                lastException = ex;
+
+                if (attempt >= maxRetries) {
+
+                    LOG.warn("LLM request, attempt {}/{}: no more retries", attempt + 1, maxRetries + 1);
+
+                    throw wrapException(ex);
+                }
+
+                if (!isRetryable(ex)) {
+
+                    LOG.warn("LLM request, attempt {}/{}: not retryable", attempt + 1, maxRetries + 1);
+
+                    throw wrapException(ex);
+                }
 
                 var delay = computeBackoffDelay(attempt);
 
-                LOG.warn("LLM call failed (attempt {}/{}), retrying in {}ms: {}",
-                        attempt + 1, maxRetries + 1, delay.toMillis(), e.getMessage());
+                LOG.warn("LLM request, attempt {}/{}: retrying in {}ms",
+                        attempt + 1, maxRetries + 1, delay.toMillis());
 
                 try {
 
@@ -94,7 +111,7 @@ public final class DefaultClient implements Client {
 
                     Thread.currentThread().interrupt();
 
-                    throw wrapException(e);
+                    throw wrapException(ex);
                 }
             }
         }

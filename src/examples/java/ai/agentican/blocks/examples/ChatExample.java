@@ -8,16 +8,8 @@ public final class ChatExample {
 
     static void main(String[] args) {
 
-        var apiKey = System.getenv("ANTHROPIC_API_KEY");
-
-        if (apiKey == null || apiKey.isBlank()) {
-
-            System.err.println("Set ANTHROPIC_API_KEY in the environment to run this example.");
-            System.exit(1);
-        }
-
         var chat = Chat.builder()
-                .model(m -> m.anthropic().apiKey(apiKey).model("claude-opus-4-7"))
+                .model(m -> m.anthropic().apiKey(Keys.require("ANTHROPIC_API_KEY")).model("claude-opus-4-7"))
                 .systemPrompt("You are a helpful assistant. Keep answers under two sentences.")
                 .build();
 

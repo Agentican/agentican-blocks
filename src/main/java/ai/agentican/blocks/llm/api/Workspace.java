@@ -10,9 +10,9 @@ public interface Workspace {
 
     default Model model() { return client().model(); }
 
-    default <T> Fn.Builder<T> fn(Class<T> outputType) {
+    default <I, O> Fn.Builder<I, O> fn(Class<I> inputType, Class<O> outputType) {
 
-        return Fn.builder(outputType).client(client());
+        return Fn.builder(inputType, outputType).client(client());
     }
 
     default Chat.Builder chat() {

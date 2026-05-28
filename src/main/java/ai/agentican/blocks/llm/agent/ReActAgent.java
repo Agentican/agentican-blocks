@@ -1,5 +1,6 @@
 package ai.agentican.blocks.llm.agent;
 
+import ai.agentican.blocks.llm.Templates;
 import ai.agentican.blocks.llm.Utils;
 import ai.agentican.blocks.llm.api.*;
 import ai.agentican.blocks.llm.impl.DefaultClient;
@@ -10,6 +11,7 @@ import ai.agentican.blocks.llm.impl.TextMessageBlock;
 import ai.agentican.blocks.llm.impl.ToolResultMessageBlock;
 import ai.agentican.blocks.llm.impl.ToolUseMessageBlock;
 
+import io.quarkus.qute.Template;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +29,7 @@ public final class ReActAgent implements Agent {
     private static final int DEFAULT_MAX_TURNS = 10;
 
     private final Client client;
-    private final String systemPrompt;
+    private final Template systemTemplate;
     private final Map<String, Tool> tools;
     private final int maxTurns;
 
@@ -36,7 +38,7 @@ public final class ReActAgent implements Agent {
     private ReActAgent(Client client, String systemPrompt, Map<String, Tool> tools, int maxTurns) {
 
         this.client = client;
-        this.systemPrompt = systemPrompt;
+        this.systemTemplate = Templates.parse(systemPrompt);
         this.tools = Map.copyOf(tools);
         this.maxTurns = maxTurns;
 
@@ -44,36 +46,25 @@ public final class ReActAgent implements Agent {
     }
 
     @Override
-    public String perform(String task) {
-
-        var response = respond(task, Void.class);
-
-        return response.text() != null ? response.text() : "";
-    }
-
-    @Override
-    public <T> T perform(String task, Class<T> outputType) {
-
-        return respond(task, outputType).output();
-    }
-
-    @Override
-    public LoopResponse<Void> respond(String task) {
-
-        return respond(task, Void.class);
-    }
-
-    @Override
-    public <T> LoopResponse<T> respond(String task, Class<T> outputType) {
+    public <T> LoopResponse<T> respond(String task, Object input, Class<T> outputType) {
 
         if (Utils.isMissing(task))
-            throw new IllegalArgumentException("User task required");
+            throw new IllegalArgumentException("Task required");
 
-        if (outputType == null) throw new IllegalArgumentException("Output type required");
+        if (outputType == null)
+            throw new IllegalArgumentException("Output type required");
+
+        var renderedSystem = Templates.render(systemTemplate, input);
+
+        var renderedTask = Templates.render(Templates.parse(task), input);
+
+        boolean structured = outputType != Void.class && outputType != String.class;
+
+        Class<?> modelCallType = structured ? outputType : Void.class;
 
         var messageHistory = new ArrayList<ModelMessage>();
 
-        var userMessageBlock = TextMessageBlock.of(task);
+        var userMessageBlock = TextMessageBlock.of(renderedTask);
 
         var userMessage = ModelMessage.user(userMessageBlock);
 
@@ -83,7 +74,9 @@ public final class ReActAgent implements Agent {
 
         for (int turn = 0; turn < maxTurns; turn++) {
 
-            var modelResponse = client.send(systemPrompt, messageHistory, toolDefinitions, outputType);
+            LOG.debug("Turn {}: starting", turn + 1);
+
+            var modelResponse = client.send(renderedSystem, messageHistory, toolDefinitions, modelCallType);
 
             var responseText = modelResponse.text();
             var stopReason = modelResponse.stopReason();
@@ -96,19 +89,29 @@ public final class ReActAgent implements Agent {
 
             messageHistory.add(assistantMessage);
 
-            if (stopReason != StopReason.TOOL_USE || modelResponse.toolCalls().isEmpty())
+            if (stopReason != StopReason.TOOL_USE || modelResponse.toolCalls().isEmpty()) {
+
+                LOG.debug("Turn {}: exiting loop ({})", turn + 1, stopReason);
+
+                T finalOutput = extractOutput(modelResponse, structured);
+
                 return LoopResponse.<T>builder()
-                        .output(modelResponse.output())
+                        .output(finalOutput)
                         .text(responseText)
                         .stopReason(stopReason)
                         .usage(modelUsage)
                         .messages(messageHistory)
                         .turns(turn + 1)
                         .build();
+            }
 
             var toolResultBlocks = new ArrayList<MessageBlock>();
 
-            for (var toolCall : modelResponse.toolCalls()) {
+            var toolCalls = modelResponse.toolCalls();
+
+            LOG.debug("Turn {}: calling {} tools", turn + 1, toolCalls.size());
+
+            for (var toolCall : toolCalls) {
 
                 var toolResultBlock = callTool(toolCall);
 
@@ -118,6 +121,8 @@ public final class ReActAgent implements Agent {
             var toolResponse = ModelMessage.user(toolResultBlocks);
 
             messageHistory.add(toolResponse);
+
+            LOG.debug("Turn {}: finished", turn + 1);
         }
 
         var responseText = lastAssistantText(messageHistory);
@@ -131,11 +136,21 @@ public final class ReActAgent implements Agent {
                 .build();
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T> T extractOutput(ModelResponse<?> modelResponse, boolean structured) {
+
+        if (structured) return (T) modelResponse.output();
+
+        var text = modelResponse.text();
+
+        return (T) (text == null ? "" : text);
+    }
+
     private ToolResultMessageBlock callTool(ToolCall toolCall) {
 
         var toolCallId = toolCall.id();
         var toolName = toolCall.name();
-        
+
         var tool = tools.get(toolName);
 
         if (tool == null) {
@@ -150,7 +165,7 @@ public final class ReActAgent implements Agent {
         }
 
         try {
-            
+
             var toolArgs = toolCall.args();
 
             var tmpToolResult = tool.execute(toolArgs);
@@ -164,7 +179,7 @@ public final class ReActAgent implements Agent {
         }
         catch (Exception ex) {
 
-            LOG.warn("Tool {} failed: {}", toolCall.name(), ex.getMessage());
+            LOG.warn("Tool call: {} failed ({})", toolCall.name(), ex.getMessage());
 
             var errorMessage = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
 

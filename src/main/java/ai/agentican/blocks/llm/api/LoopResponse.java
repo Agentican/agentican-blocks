@@ -20,8 +20,12 @@ public record LoopResponse<T>(
 
         toolCalls = toolCalls == null ? List.of() : List.copyOf(toolCalls);
         messages = messages == null ? List.of() : List.copyOf(messages);
-        if (usage == null) usage = ModelUsage.ZERO;
-        if (text == null) text = "";
+
+        if (usage == null)
+            usage = ModelUsage.ZERO;
+
+        if (text == null)
+            text = "";
     }
 
     public static <T> Builder<T> builder() { return new Builder<>(); }
