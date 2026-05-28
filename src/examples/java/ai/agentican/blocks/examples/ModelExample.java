@@ -18,7 +18,7 @@ public final class ModelExample {
 
         var response = model.send("You are a helpful assistant.", messages, List.of(), Void.class);
 
-        System.out.println("Question: Explain entropy in one sentence.");
-        System.out.println("Answer: " + response.text());
+        System.out.println("Q: Explain entropy in one sentence.");
+        System.out.println("A: " + response.text());
     }
 }

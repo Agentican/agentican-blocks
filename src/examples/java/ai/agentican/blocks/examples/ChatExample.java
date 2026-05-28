@@ -16,15 +16,15 @@ public final class ChatExample {
         // send(String) — direct text reply
         var reply = chat.send("Explain entropy in one sentence.");
 
-        System.out.println("Question: Explain entropy in one sentence.");
-        System.out.println("Answer: " + reply);
+        System.out.println("Q: Explain entropy in one sentence.");
+        System.out.println("A: " + reply);
 
         // respond(String) — rich response with usage, stop reason, etc.
         var response = chat.respond("Now offer one analogy.");
 
         System.out.println();
-        System.out.println("Question: Now offer one analogy.");
-        System.out.println("Answer: " + response.text());
+        System.out.println("Q: Now offer one analogy.");
+        System.out.println("A: " + response.text());
 
         System.out.println("Tokens this turn: " + response.usage().total());
         System.out.println("Stop reason: " + response.stopReason());

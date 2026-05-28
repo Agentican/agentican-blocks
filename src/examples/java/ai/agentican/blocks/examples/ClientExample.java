@@ -23,8 +23,8 @@ public final class ClientExample {
                 .userMessage("Explain entropy in one sentence.")
                 .build());
 
-        System.out.println("Question (firstResponse): Explain entropy in one sentence.");
-        System.out.println("Answer: " + firstResponse.text());
+        System.out.println("Q: Explain entropy in one sentence.");
+        System.out.println("A: " + firstResponse.text());
 
         // send(systemPrompt, messages, tools, Class<T>) — the low-level form
         var messages = List.of(ModelMessage.user(TextMessageBlock.of("Name three primary colors.")));
@@ -32,7 +32,7 @@ public final class ClientExample {
         var secondResponse = client.send("You are a helpful assistant.", messages, List.of(), Void.class);
 
         System.out.println();
-        System.out.println("Question (low-level): Name three primary colors.");
-        System.out.println("Answer: " + secondResponse.text());
+        System.out.println("Q: Name three primary colors.");
+        System.out.println("A: " + secondResponse.text());
     }
 }
